@@ -1,0 +1,53 @@
+{
+  "name": "@libis/primo-shared-state",
+  "version": "1.0.0",
+  "description": "Shared state models and services for Primo module federation",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "npm run clean && npm run build:esm && npm run build:cjs",
+    "build:esm": "tsc --module es2015 --outDir dist --declaration",
+    "build:cjs": "tsc --module commonjs --outDir dist",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "keywords": [
+    "primo",
+    "module-federation",
+    "ngrx",
+    "state-management",
+    "angular"
+  ],
+  "author": "KULeuven/LIBIS",
+  "license": "MIT",
+  "peerDependencies": {
+    "@angular/core": "^16.0.0 || ^17.0.0 || ^18.0.0",
+    "@angular/common": "^16.0.0 || ^17.0.0 || ^18.0.0",
+    "@angular/platform-browser": "^16.0.0 || ^17.0.0 || ^18.0.0",
+    "@ngrx/store": "^16.0.0 || ^17.0.0 || ^18.0.0",
+    "rxjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "@angular/core": "^17.0.0",
+    "@angular/common": "^17.0.0",
+    "@angular/platform-browser": "^17.0.0",
+    "@ngrx/store": "^17.0.0",
+    "rxjs": "^7.8.0",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/libis/primo-shared-state.git"
+  },
+  "bugs": {
+    "url": "https://github.com/libis/primo-shared-state/issues"
+  },
+  "homepage": "https://github.com/libis/primo-shared-state#readme"
+}

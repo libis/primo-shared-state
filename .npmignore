@@ -1,0 +1,22 @@
+# Source files
+src/
+tsconfig.json
+
+# Development files
+*.spec.ts
+*.test.ts
+
+# IDE
+.idea/
+.vscode/
+
+# Version control
+.git/
+.gitignore
+
+# Documentation source (keep compiled README.md)
+docs/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
