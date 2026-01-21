@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2026-01-14
 
 ### Added
-- Initial release of @libis/primo-shared package
+- Initial release of @libis/primo-shared-state package
 - Extracted state models from Primo host application
   - `search.model.ts`: Search parameters, documents, PNX data, delivery info
   - `user.model.ts`: User state, JWT, decoded JWT, user settings

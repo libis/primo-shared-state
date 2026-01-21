@@ -15,7 +15,7 @@ import {
   FilterStateService,
   Doc,
   SearchParams
-} from '@libis/primo-shared';
+} from '@libis/primo-shared-state';
 
 @Component({
   selector: 'app-remote-search-widget',
@@ -237,7 +237,7 @@ import {
   UserStateService,
   FilterStateService,
   Doc
-} from '@libis/primo-shared';
+} from '@libis/primo-shared-state';
 
 export interface EnrichedSearchResult {
   documents: Doc[];
@@ -317,7 +317,7 @@ export class EnrichedSearchComponent {
 
 ```typescript
 import { Component, Input } from '@angular/core';
-import { Doc, DocDelivery, ElectronicService } from '@libis/primo-shared';
+import { Doc, DocDelivery, ElectronicService } from '@libis/primo-shared-state';
 
 @Component({
   selector: 'app-delivery-info',
@@ -362,7 +362,7 @@ export class DeliveryInfoComponent {
 
 ```typescript
 import { Component, OnInit } from '@angular/core';
-import { SearchStateService, Doc, Context, Adaptor } from '@libis/primo-shared';
+import { SearchStateService, Doc, Context, Adaptor } from '@libis/primo-shared-state';
 import { map } from 'rxjs/operators';
 import { Observable } from 'rxjs';
 
@@ -424,7 +424,7 @@ export class FilteredResultsComponent implements OnInit {
 
 ```typescript
 import { Component, OnInit } from '@angular/core';
-import { UserStateService, SearchStateService } from '@libis/primo-shared';
+import { UserStateService, SearchStateService } from '@libis/primo-shared-state';
 import { distinctUntilChanged, filter } from 'rxjs/operators';
 
 @Component({
@@ -480,7 +480,7 @@ export class StateMonitorComponent implements OnInit {
 
 ```typescript
 import { Component } from '@angular/core';
-import { SearchStateService } from '@libis/primo-shared';
+import { SearchStateService } from '@libis/primo-shared-state';
 import { catchError, of } from 'rxjs';
 
 @Component({

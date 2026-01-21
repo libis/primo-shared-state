@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get up and running with `@libis/primo-shared` in 5 minutes.
+Get up and running with `@libis/primo-shared-state` in 5 minutes.
 
 ## Prerequisites
 
@@ -11,7 +11,7 @@ Get up and running with `@libis/primo-shared` in 5 minutes.
 ## Installation
 
 ```bash
-npm install @libis/primo-shared
+npm install @libis/primo-shared-state
 ```
 
 ## Step 1: Basic Setup
@@ -23,7 +23,7 @@ No additional setup required! The services use `providedIn: 'root'` and are auto
 ```typescript
 // my-search.component.ts
 import { Component } from '@angular/core';
-import { SearchStateService } from '@libis/primo-shared';
+import { SearchStateService } from '@libis/primo-shared-state';
 
 @Component({
   selector: 'app-my-search',
@@ -73,7 +73,7 @@ That's it! Your component now has access to the shared state.
 
 ```typescript
 import { Component } from '@angular/core';
-import { UserStateService } from '@libis/primo-shared';
+import { UserStateService } from '@libis/primo-shared-state';
 
 @Component({
   selector: 'app-user-badge',
@@ -95,7 +95,7 @@ export class UserBadgeComponent {
 
 ```typescript
 import { Component } from '@angular/core';
-import { FilterStateService } from '@libis/primo-shared';
+import { FilterStateService } from '@libis/primo-shared-state';
 
 @Component({
   selector: 'app-active-filters',
@@ -116,7 +116,7 @@ export class ActiveFiltersComponent {
 
 ```typescript
 import { Component, OnInit } from '@angular/core';
-import { SearchStateService } from '@libis/primo-shared';
+import { SearchStateService } from '@libis/primo-shared-state';
 
 @Component({
   selector: 'app-snapshot-example',

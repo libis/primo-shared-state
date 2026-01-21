@@ -1,4 +1,4 @@
-# Package Summary: @libis/primo-shared
+# Package Summary: @libis/primo-shared-state
 
 ## Overview
 
@@ -7,7 +7,7 @@ This package extracts the NgRx state models and provides services to read/write 
 ## Package Structure
 
 ```
-primo-shared-state-package/
+primo-shared-state-state-package/
 ├── src/
 │   ├── index.ts                          # Main export file
 │   ├── models/                           # TypeScript interfaces
@@ -143,7 +143,7 @@ logout() {
 ## Installation in Client App
 
 ```bash
-npm install @libis/primo-shared
+npm install @libis/primo-shared-state
 ```
 
 ## Module Federation Configuration
@@ -153,7 +153,7 @@ npm install @libis/primo-shared
 // webpack.config.js
 shared: {
   '@ngrx/store': { singleton: true, strictVersion: true },
-  '@libis/primo-shared': { singleton: true }
+  '@libis/primo-shared-state': { singleton: true }
 }
 ```
 
@@ -162,7 +162,7 @@ shared: {
 // webpack.config.js
 shared: {
   '@ngrx/store': { singleton: true, strictVersion: true },
-  '@libis/primo-shared': { singleton: true }
+  '@libis/primo-shared-state': { singleton: true }
 }
 ```
 
@@ -219,7 +219,7 @@ After build:
 
 ## Next Steps for Implementation
 
-1. **Customize package name**: Update `@libis/primo-shared` in package.json
+1. **Customize package name**: Update `@libis/primo-shared-state` in package.json
 2. **Add organization details**: Update author, repository URLs
 3. **Install dependencies**: Run `npm install`
 4. **Build**: Run `npm run build`

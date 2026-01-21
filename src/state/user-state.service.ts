@@ -14,7 +14,7 @@ import { StateHelper } from '../utils/state-helper';
 export class UserStateService {
   private helper: StateHelper;
 
-  constructor(private store: Store) {
+  constructor(store: Store) {
     this.helper = new StateHelper(store);
   }
 

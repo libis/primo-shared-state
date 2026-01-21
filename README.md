@@ -1,4 +1,4 @@
-# @libis/primo-shared
+# @libis/primo-shared-state
 
 Shared state models and services for Primo module federation architecture. This package provides TypeScript interfaces and Angular services to access NgRx state shared between the host application and module federation clients.
 
@@ -13,7 +13,7 @@ Shared state models and services for Primo module federation architecture. This 
 ## Installation
 
 ```bash
-npm install @libis/primo-shared
+npm install @libis/primo-shared-state
 ```
 
 ## Peer Dependencies
@@ -46,7 +46,7 @@ export class RemoteAppModule { }
 
 ```typescript
 import { Component, OnInit } from '@angular/core';
-import { UserStateService } from '@libis/primo-shared';
+import { UserStateService } from '@libis/primo-shared-state';
 
 @Component({
   selector: 'app-user-info',
@@ -78,7 +78,7 @@ export class UserInfoComponent implements OnInit {
 
 ```typescript
 import { Component, OnInit } from '@angular/core';
-import { SearchStateService, Doc } from '@libis/primo-shared';
+import { SearchStateService, Doc } from '@libis/primo-shared-state';
 import { Observable } from 'rxjs';
 
 @Component({
@@ -121,7 +121,7 @@ export class SearchResultsComponent implements OnInit {
 
 ```typescript
 import { Component } from '@angular/core';
-import { FilterStateService } from '@libis/primo-shared';
+import { FilterStateService } from '@libis/primo-shared-state';
 
 @Component({
   selector: 'app-filter-panel',
@@ -157,7 +157,7 @@ To update the store, you need to dispatch actions from the host app. Import acti
 
 ```typescript
 import { Component } from '@angular/core';
-import { UserStateService } from '@libis/primo-shared';
+import { UserStateService } from '@libis/primo-shared-state';
 // Import actions from host app (adjust path as needed)
 import * as UserActions from '../../../host-app/state/user/user.actions';
 
@@ -189,7 +189,7 @@ import {
   DecodedJwt,
   FilterState,
   LoadingStatus
-} from '@libis/primo-shared';
+} from '@libis/primo-shared-state';
 
 function processDocument(doc: Doc) {
   const title = doc.pnx.display.title?.[0];
@@ -285,7 +285,7 @@ Share the NgRx store in your `webpack.config.js`:
 ```javascript
 shared: {
   '@ngrx/store': { singleton: true, strictVersion: true },
-  '@libis/primo-shared': { singleton: true }
+  '@libis/primo-shared-state': { singleton: true }
 }
 ```
 
@@ -295,7 +295,7 @@ Consume the shared store:
 ```javascript
 shared: {
   '@ngrx/store': { singleton: true, strictVersion: true },
-  '@libis/primo-shared': { singleton: true }
+  '@libis/primo-shared-state': { singleton: true }
 }
 ```
 
@@ -325,7 +325,7 @@ Link the package locally for testing:
 npm link
 
 # In your client application
-npm link @libis/primo-shared
+npm link @libis/primo-shared-state
 ```
 
 ## TypeScript Configuration
