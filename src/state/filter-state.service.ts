@@ -1,8 +1,13 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Signal } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { FilterState, selectedFilters, MultiSelectedFilter, ResourceTypeFilterModel } from '../models/filter.model';
 import { StateHelper } from '../utils/state-helper';
+import { SearchParams } from '../models/search.model';
+import {
+  loadFiltersAction,
+  updateSortByParam as updateSortByParamAction,
+} from '../actions/shared-actions';
 
 /**
  * Service for managing filter state
@@ -94,5 +99,45 @@ export class FilterStateService {
    */
   dispatch(action: any): void {
     this.helper.dispatch(action);
+  }
+
+  // ── Signal API ──────────────────────────────────────────────────────────────
+
+  filterStateSignal(): Signal<FilterState> {
+    return this.helper.selectSignal((state: any) => state.filters, {} as FilterState);
+  }
+
+  includedFiltersSignal(): Signal<selectedFilters[] | null> {
+    return this.helper.selectSignal((state: any) => state.filters?.includedFilter, null);
+  }
+
+  excludedFiltersSignal(): Signal<selectedFilters[] | null> {
+    return this.helper.selectSignal((state: any) => state.filters?.excludedFilter, null);
+  }
+
+  multiSelectedFiltersSignal(): Signal<MultiSelectedFilter[] | null> {
+    return this.helper.selectSignal((state: any) => state.filters?.multiSelectedFilter, null);
+  }
+
+  resourceTypeFilterSignal(): Signal<ResourceTypeFilterModel | null> {
+    return this.helper.selectSignal((state: any) => state.filters?.resourceTypeFilter, null);
+  }
+
+  isFiltersOpenSignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: any) => state.filters?.isFiltersOpen || false, false);
+  }
+
+  isRememberAllSignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: any) => state.filters?.isRememberAll || false, false);
+  }
+
+  // ── Typed dispatch helpers ──────────────────────────────────────────────────
+
+  loadFilters(searchParams: SearchParams): void {
+    this.helper.dispatch(loadFiltersAction({ searchParams }));
+  }
+
+  updateSortByParam(sort: string): void {
+    this.helper.dispatch(updateSortByParamAction({ sort }));
   }
 }

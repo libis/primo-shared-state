@@ -11,3 +11,6 @@ export * from './state/filter-state.service';
 
 // Utilities
 export * from './utils/state-helper';
+
+// Actions
+export * from './actions/shared-actions';

@@ -41,6 +41,7 @@ export interface SearchParams {
   searchWord?: string,
   browseParams?: string,
   isRelatedItems?: boolean,
+  analyticAction?: string,
 }
 
 export interface SearchParamsWithStrParams   extends Omit<SearchParams, 'qInclude' | 'qExclude' | 'multiFacets'> {
@@ -133,7 +134,7 @@ export interface MergedDelivery {
   recordId: string;
 }
 
-export const SUPPORTED_ELECTRONIC_TYPES_FOR_DIGITAL_VIEWER = ["jpg", "tif", "gif", "png", "pdf", "jp2","jpeg"];
+export const SUPPORTED_ELECTRONIC_TYPES_FOR_DIGITAL_VIEWER = ["jpg", "tif", "tiff", "gif", "png", "pdf", "jp2","jpeg"];
 
 export interface ElectronicService {
   adaptorid: string
@@ -204,6 +205,7 @@ export interface DocDelivery {
   filteredByGroupServices?: GroupServices[];
   hasFilteredServices?: string;
   electronicContextObjectId?: string;
+  mayAlsoBeFoundAt?: MayAlsoBeFoundAtItem[];
 }
 
 export interface AlmaInstitutionsList {
@@ -494,4 +496,20 @@ export interface SeedsInfo {
   frbrGroupId: string,
   pnxId: string,
   title: string
+}
+
+export interface MayAlsoBeFoundAtItem {
+  code: string;
+  displayLabel: string;
+  additionalLabel: string;
+  linkType: string;
+  linkURL: string;
+  computedDisplayLabel: string;
+  computedDisplayWords: string[];
+}
+
+export interface TopBarSelectedFilter {
+  value: string;
+  filterType?: string;
+  mergedLabel?: string[] | undefined;
 }

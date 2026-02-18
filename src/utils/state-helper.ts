@@ -1,3 +1,5 @@
+import { Signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { take } from 'rxjs/operators';
@@ -41,6 +43,10 @@ export class StateHelper {
    */
   dispatchAll(actions: any[]): void {
     actions.forEach(action => this.store.dispatch(action));
+  }
+
+  selectSignal<T>(selector: any, initialValue: T): Signal<T> {
+    return toSignal(this.select$<T>(selector), { initialValue });
   }
 }
 

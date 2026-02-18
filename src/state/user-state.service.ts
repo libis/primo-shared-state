@@ -1,8 +1,18 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Signal } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { DecodedJwt, UserSettings, UserState } from '../models/user.model';
 import { StateHelper } from '../utils/state-helper';
+import {
+  changeRaSaveSearchDoneAction,
+  doneAutoExtendMySessionToggleAction,
+  doneChangeUserSettingsLanguageAction,
+  doneSaveHistoryToggleAction,
+  doneUseHistoryToggleAction,
+  resetLogoutReason as resetLogoutReasonAction,
+  setDecodedJwt as setDecodedJwtAction,
+  setLoginFromStateAction,
+} from '../actions/shared-actions';
 
 /**
  * Service for managing user state
@@ -94,5 +104,69 @@ export class UserStateService {
    */
   dispatch(action: any): void {
     this.helper.dispatch(action);
+  }
+
+  // ── Signal API ──────────────────────────────────────────────────────────────
+
+  userStateSignal(): Signal<UserState> {
+    return this.helper.selectSignal((state: any) => state.user, {} as UserState);
+  }
+
+  jwtSignal(): Signal<string | undefined> {
+    return this.helper.selectSignal((state: any) => state.user?.jwt, undefined);
+  }
+
+  decodedJwtSignal(): Signal<DecodedJwt | undefined> {
+    return this.helper.selectSignal((state: any) => state.user?.decodedJwt, undefined);
+  }
+
+  isLoggedInSignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: any) => state.user?.isLoggedIn, false);
+  }
+
+  userSettingsSignal(): Signal<UserSettings | undefined> {
+    return this.helper.selectSignal((state: any) => state.user?.userSettings, undefined);
+  }
+
+  userNameSignal(): Signal<string | undefined> {
+    return this.helper.selectSignal((state: any) => state.user?.decodedJwt?.userName, undefined);
+  }
+
+  userGroupSignal(): Signal<string> {
+    return this.helper.selectSignal((state: any) => state.user?.decodedJwt?.userGroup || 'GUEST', 'GUEST');
+  }
+
+  // ── Typed dispatch helpers ──────────────────────────────────────────────────
+
+  setDecodedJwt(decodedJwt: DecodedJwt): void {
+    this.helper.dispatch(setDecodedJwtAction({ decodedJwt }));
+  }
+
+  setLoginFromState(value: string): void {
+    this.helper.dispatch(setLoginFromStateAction({ value }));
+  }
+
+  resetLogoutReason(): void {
+    this.helper.dispatch(resetLogoutReasonAction());
+  }
+
+  setLanguage(value: string): void {
+    this.helper.dispatch(doneChangeUserSettingsLanguageAction({ value }));
+  }
+
+  setSaveHistory(value: string): void {
+    this.helper.dispatch(doneSaveHistoryToggleAction({ value }));
+  }
+
+  setUseHistory(value: string): void {
+    this.helper.dispatch(doneUseHistoryToggleAction({ value }));
+  }
+
+  setAutoExtendMySession(value: string): void {
+    this.helper.dispatch(doneAutoExtendMySessionToggleAction({ value }));
+  }
+
+  setAllowSavingRaSearchHistory(value: string): void {
+    this.helper.dispatch(changeRaSaveSearchDoneAction({ value }));
   }
 }
