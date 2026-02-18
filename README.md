@@ -106,34 +106,59 @@ npm install
 
 This lib wraps `@ngrx/store` and `@angular/core` — both of which the host already bootstrapped as singletons. If you do **not** add it to the shared map, webpack module federation will bundle a private copy of the lib inside the remote's chunk. That private copy resolves its own `Store` injection token, which is completely isolated from the host's `Store`. As a result, all selectors return empty/`undefined` and dispatched actions are silently swallowed — the lib appears to load fine but does nothing.
 
-Add it to the remote's shared map so the remote uses the same instance the host already loaded:
+The project uses `ModuleFederationPlugin` directly (not `withModuleFederationPlugin`) with the lower-level `share()` helper. Add `@libis/primo-shared-state` alongside the other shared packages:
 
 ```javascript
 // webpack.config.js (remote / client only — the host has no knowledge of this lib)
-const { shareAll, withModuleFederationPlugin } = require('@angular-architects/module-federation/webpack');
+const ModuleFederationPlugin = require('webpack/lib/container/ModuleFederationPlugin');
+const mf = require('@angular-architects/module-federation/webpack');
+const share = mf.share;
 
-module.exports = withModuleFederationPlugin({
-  name: 'ndeCustomModule',
+new ModuleFederationPlugin({
+  library: { type: 'module' },
+  name: 'customModule',
+  filename: 'remoteEntry.js',
   exposes: {
-    './Module': './src/app/nde/nde.module.ts',
+    './custom-module': './src/bootstrap.ts',
   },
-  shared: {
-    ...shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' }),
-    '@libis/primo-shared-state': {
-      singleton: true,
-      strictVersion: false,  // the host does not ship this lib — no version to match against
-    },
-  },
-});
+  shared: share({
+    '@angular/core':             { singleton: true, requiredVersion: 'auto' },
+    '@angular/common':           { singleton: true, requiredVersion: 'auto' },
+    '@angular/router':           { singleton: true, requiredVersion: 'auto' },
+    '@angular/common/http':      { singleton: true, requiredVersion: 'auto' },
+    '@angular/platform-browser': { singleton: true, requiredVersion: 'auto' },
+    'rxjs':                      { singleton: true, requiredVersion: 'auto' },
+    '@ngx-translate/core':       { singleton: true },
+    '@ngrx/store':               { singleton: true, requiredVersion: 'auto' },
+    '@libis/primo-shared-state': { singleton: true, strictVersion: false },
+  }),
+}),
 ```
 
-> **Why `strictVersion: false`?**
-> The host does not ship or share this lib at all — it has no knowledge of it.
-> `strictVersion: true` would cause a runtime error because there is no host-provided
-> version for webpack to match against. `strictVersion: false` tells module federation
-> to use whatever version the remote brings, without demanding a counterpart from the host.
+> **Why `singleton: true` on every entry?**
+> Angular and NgRx use module-level singletons (injectors, action streams, the store itself).
+> A second copy of any of these packages would create a completely separate DI tree — services
+> would not be found, actions would not reach reducers, and the app would likely crash or
+> silently misbehave.
+
+> **Why `strictVersion: false` for this lib?**
+> The host does not ship or share `@libis/primo-shared-state` at all — it has no knowledge of it.
+> With `strictVersion: true` (the default) webpack would emit a warning or error at runtime
+> because there is no host-provided version to satisfy the version constraint.
+> `strictVersion: false` tells module federation to use the remote's own copy without
+> requiring a matching offer from the host.
+
+> **Why `requiredVersion: 'auto'` on the Angular / NgRx packages?**
+> `auto` reads the version from the remote's `package.json` at build time and uses it as
+> the required version constraint. This ensures the remote will refuse to run if the host
+> loads an incompatible version of Angular or NgRx, preventing subtle DI mismatches that
+> are hard to debug at runtime.
 
 No changes to the host's `webpack.config.js` are needed or possible — the host is a black box.
+
+> ⚠️ **Check your existing config** — the `@angular/*` packages and `@ngrx/store` must all
+> have `singleton: true`. Without it, module federation may load a second copy of Angular
+> alongside the host's copy, causing `NullInjectorError` or duplicate store instances.
 
 ---
 
