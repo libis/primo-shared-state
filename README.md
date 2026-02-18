@@ -9,7 +9,7 @@ Shared state models and Angular services for the Primo module-federation archite
 | **Models** (`src/models/`) | TypeScript interfaces mirroring the host's state shapes: `SearchParams`, `Doc`, `UserState`, `FilterState`, `LoadingStatus`, … |
 | **Services** (`src/state/`) | Three `providedIn: 'root'` Angular services — `UserStateService`, `SearchStateService`, `FilterStateService` — each offering Observable streams, one-shot Promise snapshots, Angular Signals, and typed dispatch helpers |
 | **Actions** (`src/actions/`) | `shared-actions.ts` — re-exported NgRx action creators whose `type` strings match the host's reducers **byte-for-byte** |
-| **Utility** (`src/utils/`) | `StateHelper` — thin wrapper around `Store` used internally by all services |
+| **Utility** (`src/utils/`) | `StateHelper` — thin wrapper around `Store` used internally by all services; `DocPatchService` — client-side PNX overlay for correcting server data without touching the store |
 
 ## Peer dependencies
 
@@ -341,6 +341,160 @@ constructor() {
 
 ---
 
+## Patching PNX data locally
+
+### The problem
+
+The host application has **no generic "patch doc" action**. Every mutation of the `pnx` property inside a `Doc` entity goes through an NgRx Effect that performs an HTTP call and then emits a `*SuccessAction` — those success actions carry a complete server-response payload that a remote module cannot replicate.
+
+This means a remote module **cannot** fix incorrect or missing server data by dispatching a store action. Doing so would either be a no-op (no such action exists) or corrupt the store (by dispatching a success action with fake data, which also re-fires HTTP effects).
+
+### The solution — `DocPatchService`
+
+`DocPatchService` is a `providedIn: 'root'` service that maintains a client-side **overlay map** of PNX patches. The patches live entirely outside the NgRx store — they are merged on-the-fly with the store's entities before your component receives the docs.
+
+```
+NgRx store (read-only from remote)
+    │
+    ▼
+DocPatchService.patches$ (BehaviorSubject<Map<recordId, PnxPatch>>)
+    │
+    ▼ combineLatest + merge
+patched docs Observable / Signal
+```
+
+The overlay is **transparent** to the host — nothing in the store is modified.
+
+### Auto-reset
+
+Patches are cleared automatically when `state.Search.searchParams` changes (i.e., a new search is started) or the search state is reset. You can also call `clearAllDocPatches()` or `clearDocPatch(recordId)` manually at any time.
+
+### Usage via `SearchStateService`
+
+You don't need to inject `DocPatchService` directly. `SearchStateService` exposes all patching methods as convenience wrappers:
+
+```typescript
+import { Component, inject } from '@angular/core';
+import { SearchStateService } from '@libis/primo-shared-state';
+
+@Component({ /* … */ })
+export class MyComponent {
+  private search = inject(SearchStateService);
+
+  // Use patched docs instead of the raw store docs
+  docs$ = this.search.selectAllDocsPatchedByLocal$();
+  // or as a Signal:
+  docs  = this.search.allDocsPatchedSignal();
+
+  fixRecord(recordId: string) {
+    // Patch a missing thumbnail
+    this.search.patchDocPnx(recordId, {
+      links: { thumbnail: ['https://covers.example.com/9780000000000.jpg'] },
+    });
+
+    // Patch the display title
+    this.search.patchDocPnx(recordId, {
+      display: { title: ['Corrected Title'] },
+    });
+
+    // Patch multiple sections at once
+    this.search.patchDocPnx(recordId, {
+      display: { title: ['Title'], description: ['Abstract text …'] },
+      links:   { thumbnail: ['https://covers.example.com/img.jpg'] },
+    });
+  }
+
+  removeOverride(recordId: string) {
+    this.search.clearDocPatch(recordId);
+  }
+
+  removeAllOverrides() {
+    this.search.clearAllDocPatches();
+  }
+}
+```
+
+### PnxPatch type
+
+```typescript
+import { PnxPatch } from '@libis/primo-shared-state';
+
+// PnxPatch mirrors the Pnx interface — every key is optional.
+// String-map sections (display, addata, facets) accept partial sub-key maps.
+// Struct sections (control, sort, links, search, delivery) accept Partial<T>.
+
+const patch: PnxPatch = {
+  // Override one or more display fields (leave the rest intact):
+  display: {
+    title:       ['Corrected full title'],
+    description: ['A more accurate abstract'],
+  },
+  // Override the thumbnail link:
+  links: {
+    thumbnail: ['https://my-cdn.example.com/covers/9780000000000.jpg'],
+  },
+  // Override addata identifiers:
+  addata: {
+    isbn: ['978-0-000-00000-0'],
+  },
+};
+```
+
+### Merge semantics
+
+Patches are **shallow-merged per top-level PNX key**:
+
+| Section | Merge behaviour |
+|---|---|
+| `display`, `addata`, `facets` | Object spread — only the supplied sub-keys are replaced; other sub-keys are preserved |
+| `control`, `sort`, `links`, `search`, `delivery` | Object spread — only the supplied fields are replaced |
+
+Calling `patchDocPnx` multiple times for the same record **accumulates** the patches (each call is merged into the existing one).
+
+### Determining the `recordId`
+
+The `recordId` you pass to `patchDocPnx` must match the NgRx entity key used by the host's store adapter.
+
+The host computes the entity key as follows:
+- For **NP context** (Primo Central): `BM_${pnx.search.recordid[0]}`
+- For all other contexts: `pnx.control.recordid[0]`
+
+The easiest way to get the correct key is to read it from `doc['@id']`:
+
+```typescript
+const docs = await this.search.getAllDocs();
+docs.forEach(doc => {
+  const recordId = doc['@id'];   // this is the entity key
+  if (needsPatch(doc)) {
+    this.search.patchDocPnx(recordId, { display: { title: ['Fixed'] } });
+  }
+});
+```
+
+### Using `DocPatchService` directly
+
+If you prefer to inject the service yourself:
+
+```typescript
+import { inject } from '@angular/core';
+import { DocPatchService, PnxPatch } from '@libis/primo-shared-state';
+
+private docPatch = inject(DocPatchService);
+
+// All the same methods are available directly:
+this.docPatch.patchDocPnx(recordId, patch);
+this.docPatch.clearPatch(recordId);
+this.docPatch.clearAllPatches();
+this.docPatch.selectAllDocsPatched$();
+this.docPatch.selectDocByIdPatched$(recordId);
+this.docPatch.allDocsPatchedSignal();
+this.docPatch.docByIdPatchedSignal(recordId);
+this.docPatch.getPatchSnapshot(recordId);   // synchronous read
+this.docPatch.hasPatches();                 // boolean
+```
+
+---
+
 ## API reference
 
 ### `UserStateService`
@@ -414,6 +568,17 @@ constructor() {
 #### Dispatch helpers
 `search(params, type?)` · `clearSearch()` · `setPageLimit(n)` · `setPageNumber(n)` · `setSortBy(s)` · `setIsSavedSearch(b)` · `setSearchNotificationMessage(s)` · `dispatch(action)`
 
+#### Local PNX patch overlay
+| Method | Description |
+|---|---|
+| `patchDocPnx(recordId, patch)` | Apply / merge a `PnxPatch` for the given record |
+| `clearDocPatch(recordId)` | Remove the patch for a single record |
+| `clearAllDocPatches()` | Remove all patches |
+| `selectAllDocsPatchedByLocal$()` | `Observable<Doc[]>` — store docs with patches applied |
+| `selectDocByIdPatchedByLocal$(id)` | `Observable<Doc \| undefined>` — single patched doc |
+| `allDocsPatchedSignal()` | `Signal<Doc[]>` — patched docs as a Signal |
+| `docByIdPatchedSignal(id)` | `Signal<Doc \| undefined>` — single patched doc as a Signal |
+
 ---
 
 ### `FilterStateService`
@@ -449,6 +614,25 @@ constructor() {
 
 #### Dispatch helpers
 `loadFilters(params)` · `updateSortByParam(s)` · `dispatch(action)`
+
+---
+
+### `DocPatchService`
+
+Client-side PNX overlay — see the [Patching PNX data locally](#patching-pnx-data-locally) section for full details.
+
+| Method | Signature | Description |
+|---|---|---|
+| `patchDocPnx` | `(recordId: string, patch: PnxPatch) => void` | Apply/merge a patch |
+| `clearPatch` | `(recordId: string) => void` | Remove patch for one record |
+| `clearAllPatches` | `() => void` | Remove all patches |
+| `selectAllDocsPatched$` | `() => Observable<Doc[]>` | Patched docs stream |
+| `selectDocByIdPatched$` | `(recordId) => Observable<Doc \| undefined>` | Single patched doc stream |
+| `selectPatches$` | `() => Observable<ReadonlyMap<string, PnxPatch>>` | Raw patch map (debug) |
+| `allDocsPatchedSignal` | `() => Signal<Doc[]>` | Patched docs as Signal |
+| `docByIdPatchedSignal` | `(recordId) => Signal<Doc \| undefined>` | Single patched doc as Signal |
+| `getPatchSnapshot` | `(recordId) => PnxPatch \| null` | Synchronous patch read |
+| `hasPatches` | `() => boolean` | `true` if any patch is active |
 
 ---
 
