@@ -47,7 +47,7 @@ npm pack
 
 ```bash
 npm pack
-cp libis-primo-shared-state-1.0.0.tgz path/to/NDE_customModule_LIBISstyle/nde/
+cp libis-primo-shared-state-1.0.0.tgz path/to/NDE_customModule/nde/
 ```
 
 ### Step 2 — add the `file:` dependency to the remote's `package.json`
