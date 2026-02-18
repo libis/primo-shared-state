@@ -20,7 +20,7 @@
  */
 
 import { createAction, props } from '@ngrx/store';
-import { Doc, Facet, SearchData, SearchMetaData, SearchParams } from '../models/search.model';
+import { Doc, Facet, SearchData, SearchParams } from '../models/search.model';
 import { DecodedJwt, UserSettings } from '../models/user.model';
 import { LogoutReason } from '../models/state.const';
 
