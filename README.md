@@ -125,40 +125,61 @@ new ModuleFederationPlugin({
     '@angular/core':             { singleton: true, requiredVersion: 'auto' },
     '@angular/common':           { singleton: true, requiredVersion: 'auto' },
     '@angular/router':           { singleton: true, requiredVersion: 'auto' },
-    '@angular/common/http':      { singleton: true, requiredVersion: 'auto' },
-    '@angular/platform-browser': { singleton: true, requiredVersion: 'auto' },
-    'rxjs':                      { singleton: true, requiredVersion: 'auto' },
+    '@angular/common/http':      { requiredVersion: 'auto' },           // ¹
+    '@angular/platform-browser': { requiredVersion: 'auto' },           // ¹
+    'rxjs':                      { requiredVersion: 'auto' },           // ¹
     '@ngx-translate/core':       { singleton: true },
-    '@ngrx/store':               { singleton: true, requiredVersion: 'auto' },
+    '@ngrx/store':               { singleton: true },
     '@libis/primo-shared-state': { singleton: true, strictVersion: false },
   }),
 }),
 ```
 
-> **Why `singleton: true` on every entry?**
-> Angular and NgRx use module-level singletons (injectors, action streams, the store itself).
-> A second copy of any of these packages would create a completely separate DI tree — services
-> would not be found, actions would not reach reducers, and the app would likely crash or
-> silently misbehave.
+> **Why `singleton: true` on `@angular/core`, `@angular/common`, and `@angular/router`?**
+> These three packages form Angular's core DI infrastructure — injectors, the component registry,
+> and the router outlet tree. A second copy of any of them creates a completely separate DI tree
+> that cannot share services, pipes, or directives with the host. `singleton: true` forces
+> module federation to use whichever copy was loaded first (the host's) rather than loading a
+> second one from the remote bundle.
 
-> **Why `strictVersion: false` for this lib?**
-> The host does not ship or share `@libis/primo-shared-state` at all — it has no knowledge of it.
-> With `strictVersion: true` (the default) webpack would emit a warning or error at runtime
-> because there is no host-provided version to satisfy the version constraint.
-> `strictVersion: false` tells module federation to use the remote's own copy without
-> requiring a matching offer from the host.
+> **¹ Why `singleton: true` is intentionally omitted on `rxjs`, `@angular/common/http`, and `@angular/platform-browser`?**
+>
+> Primo (the host) runs on **Angular 19.1.3** and **NgRx 19.0.0**. At the time of writing, this
+> remote project is built against **Angular 18**. When `singleton: true` is set on a package
+> that the host also exposes in its shared scope (which these three are), module federation
+> performs a version negotiation: it picks one copy for the entire page and warns or throws if
+> the versions are incompatible.
+>
+> Because the remote's version (`^18`) does not satisfy the host's offered version (`19.1.3`),
+> adding `singleton: true` causes the following runtime crash as soon as the remote chunk loads:
+>
+> ```
+> TypeError: t is not a function
+>     at __definition.ts:653:40
+>     at Array.forEach
+> ```
+>
+> This happens because Angular 19 internals call into functions that changed signature between
+> v18 and v19 — when two mismatched Angular copies are negotiated into one, the mismatch
+> manifests as a broken function reference inside Angular's own code.
+>
+> **Without `singleton: true`**, module federation does not try to negotiate a shared instance.
+> Instead it lets the remote load its own bundled copy for those packages. This means two copies
+> of `rxjs` etc. exist on the page, but those packages are stateless utility libraries —
+> unlike `@angular/core`, a second copy of `rxjs` causes no runtime errors.
+>
+> **The permanent fix** is to upgrade the remote to **Angular 19.1.x** to match Primo exactly,
+> then restore `singleton: true` and `requiredVersion: 'auto'` on all Angular packages.
+> Until that upgrade is done, omitting `singleton: true` on the version-mismatched packages
+> is the pragmatic workaround.
 
-> **Why `requiredVersion: 'auto'` on the Angular / NgRx packages?**
-> `auto` reads the version from the remote's `package.json` at build time and uses it as
-> the required version constraint. This ensures the remote will refuse to run if the host
-> loads an incompatible version of Angular or NgRx, preventing subtle DI mismatches that
-> are hard to debug at runtime.
+> **Why `strictVersion: false` for `@libis/primo-shared-state`?**
+> The host does not ship or share this lib at all — it has no knowledge of it.
+> `strictVersion: true` (the default) would cause a runtime error because there is no
+> host-provided version to satisfy the constraint. `strictVersion: false` tells module
+> federation to use the remote's own copy without requiring a matching offer from the host.
 
 No changes to the host's `webpack.config.js` are needed or possible — the host is a black box.
-
-> ⚠️ **Check your existing config** — the `@angular/*` packages and `@ngrx/store` must all
-> have `singleton: true`. Without it, module federation may load a second copy of Angular
-> alongside the host's copy, causing `NullInjectorError` or duplicate store instances.
 
 ---
 
