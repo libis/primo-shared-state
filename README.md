@@ -11,6 +11,43 @@ Shared state models and Angular services for the Primo module-federation archite
 | **Actions** (`src/actions/`) | `shared-actions.ts` — re-exported NgRx action creators whose `type` strings match the host's reducers **byte-for-byte** |
 | **Utility** (`src/utils/`) | `StateHelper` — thin wrapper around `Store` used internally by all services |
 
+### Table of contents
+
+- [Peer dependencies](#peer-dependencies)
+- [Building & packaging](#building--packaging)
+- [Deploying to a module-federation remote client](#deploying-to-a-module-federation-remote-client)
+- [Usage](#usage)
+  - [Observable API](#observable-api-reactive)
+  - [Signal API](#signal-api-angular-17)
+  - [Promise snapshots](#one-shot-promise-snapshots-logic-not-templates)
+  - [Typed dispatch helpers](#typed-dispatch-helpers)
+  - [Low-level dispatch](#low-level-dispatch-escape-hatch)
+- [Why not all host actions are exported](#why-not-all-host-actions-are-exported)
+- [API reference](#api-reference)
+  - [UserStateService](#userstateservice)
+  - [SearchStateService](#searchstateservice)
+  - [FilterStateService](#filterstateservice)
+- [Types & interfaces](#types--interfaces)
+  - [Primitives & constants](#primitives--constants)
+  - [User types](#user-types)
+  - [Search types](#search-types)
+    - [SearchParams](#searchparams)
+    - [SearchData / SearchMetaData](#searchdata--searchmetadata)
+    - [Doc](#doc)
+    - [Pnx](#pnx)
+    - [DocDelivery](#docdelivery)
+    - [Delivery sub-types](#delivery-sub-types)
+    - [Search result sub-types](#search-result-sub-types)
+    - [Enrichment & citation types](#enrichment--citation-types)
+    - [Utility map types](#utility-map-types)
+  - [Filter types](#filter-types)
+- [Actions reference](#actions-reference)
+  - [Search actions](#search-actions-1)
+  - [Filter actions](#filter-actions-1)
+  - [User actions](#user-actions-1)
+- [Troubleshooting](#troubleshooting)
+- [Versioning](#versioning)
+
 ## Peer dependencies
 
 | Package | Version |
@@ -65,12 +102,14 @@ cd path/to/NDE_customModule_LIBISstyle
 npm install
 ```
 
-### Step 4 — declare the package as a **singleton shared** in `webpack.config.js`
+### Step 4 — declare the package as **shared** in `webpack.config.js`
 
-The remote must consume the same singleton instances of Angular and NgRx that the host already loaded. Add `@libis/primo-shared-state` to the shared map:
+This lib wraps `@ngrx/store` and `@angular/core` — both of which the host already bootstrapped as singletons. If you do **not** add it to the shared map, webpack module federation will bundle a private copy of the lib inside the remote's chunk. That private copy resolves its own `Store` injection token, which is completely isolated from the host's `Store`. As a result, all selectors return empty/`undefined` and dispatched actions are silently swallowed — the lib appears to load fine but does nothing.
+
+Add it to the remote's shared map so the remote uses the same instance the host already loaded:
 
 ```javascript
-// webpack.config.js (remote / client)
+// webpack.config.js (remote / client only — the host has no knowledge of this lib)
 const { shareAll, withModuleFederationPlugin } = require('@angular-architects/module-federation/webpack');
 
 module.exports = withModuleFederationPlugin({
@@ -80,22 +119,21 @@ module.exports = withModuleFederationPlugin({
   },
   shared: {
     ...shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' }),
-    // Override the shared-state lib to be a singleton but NOT strict —
-    // the host owns it; the remote just consumes what the host provides.
     '@libis/primo-shared-state': {
       singleton: true,
-      strictVersion: false,
+      strictVersion: false,  // the host does not ship this lib — no version to match against
     },
   },
 });
 ```
 
-> **Why `strictVersion: false` for this lib?**
-> The tarball version in your remote may lag one patch behind the host copy.
-> `strictVersion: false` prevents a runtime version-mismatch error while still
-> ensuring only one instance is loaded (from the host).
+> **Why `strictVersion: false`?**
+> The host does not ship or share this lib at all — it has no knowledge of it.
+> `strictVersion: true` would cause a runtime error because there is no host-provided
+> version for webpack to match against. `strictVersion: false` tells module federation
+> to use whatever version the remote brings, without demanding a counterpart from the host.
 
-The host's `webpack.config.js` needs no changes — it already shares Angular and NgRx as singletons.
+No changes to the host's `webpack.config.js` are needed or possible — the host is a black box.
 
 ---
 
@@ -490,50 +528,860 @@ export class DocPatchService {
 
 ---
 
-## Key types
+## Types & interfaces
+
+> All types below are exported from the package root and can be imported directly:
+> ```typescript
+> import { Doc, SearchParams, FilterState, LoadingStatus } from '@libis/primo-shared-state';
+> ```
+
+---
+
+### Primitives & constants
+
+Defined in `src/models/state.const.ts`.
 
 ```typescript
-// Loading status
 type LoadingStatus = 'pending' | 'loading' | 'success' | 'fail';
+type LogoutReason  = 'user' | 'timeout';
+```
 
-// Logout cause
-type LogoutReason = 'user' | 'timeout';
+| Constant | Value | Description |
+|---|---|---|
+| `PENDING` | `'pending'` | Initial state — no request started |
+| `LOADING` | `'loading'` | HTTP request in flight |
+| `SUCCESS` | `'success'` | Request completed successfully |
+| `FAIL` | `'fail'` | Request completed with error |
+| `USER` | `'user'` | Logout triggered by the user |
+| `TIMEOUT` | `'timeout'` | Logout triggered by session timeout |
 
-// Decoded JWT payload
-interface DecodedJwt {
-  userName: string;
-  displayName: string;
-  userGroup: string;
-  onCampus: boolean;
-  signedIn: boolean;
-  authenticationProfile: string;
-  user: string;
-}
+---
 
-// User preferences
-interface UserSettings {
-  resultsBulkSize?: string;
-  language?: string;
-  saveSearchHistory?: string;
-  useSearchHistory?: string;
-  autoExtendMySession?: string;
-  allowSavingMyResearchAssistanceSearchHistory?: string;
-  email?: string;
-  [key: string]: string | undefined;
-}
+### User types
 
-// Search parameters (all fields)
-interface SearchParams {
-  q: string;
-  scope: string;
-  offset?: number;
-  limit?: number;
-  sort?: string;
-  tab?: string;
-  lang?: string;
-  // … see search.model.ts for the full list
+Defined in `src/models/user.model.ts`.
+
+#### `UserState`
+
+Top-level state slice for the authenticated user.
+
+| Field | Type | Description |
+|---|---|---|
+| `jwt` | `string \| undefined` | Raw JWT token string |
+| `decodedJwt` | `DecodedJwt \| undefined` | Parsed JWT payload |
+| `status` | `LoadingStatus` | Current load status of the user/JWT |
+| `isLoggedIn` | `boolean` | Whether the user is authenticated |
+| `loginFromState` | `string \| undefined` | URL the user was on before login redirect |
+| `userSettings` | `UserSettings \| undefined` | Persisted user preferences |
+| `userSettingsStatus` | `LoadingStatus` | Load status of `userSettings` |
+| `logoutReason` | `LogoutReason \| undefined` | Why the last logout happened |
+
+#### `DecodedJwt`
+
+Parsed claims from the Primo JWT.
+
+| Field | Type | Description |
+|---|---|---|
+| `userName` | `string` | Login identifier (barcode / username) |
+| `displayName` | `string` | Human-readable name |
+| `userGroup` | `string` | Primo user group (e.g. `'Staff'`, `'GUEST'`) |
+| `onCampus` | `boolean` | Whether the IP is on-campus |
+| `signedIn` | `boolean` | Whether the user is actively signed in |
+| `authenticationProfile` | `string` | ILS authentication profile identifier |
+| `user` | `string` | Raw user field from JWT |
+
+#### `UserSettings`
+
+Key/value map of persisted user preferences. All fields are optional strings.
+
+| Field | Type | Description |
+|---|---|---|
+| `resultsBulkSize` | `string?` | Number of results per page |
+| `language` | `string?` | Preferred UI language code |
+| `saveSearchHistory` | `string?` | `'true'`/`'false'` — whether search history is saved |
+| `useSearchHistory` | `string?` | `'true'`/`'false'` — whether history is used |
+| `autoExtendMySession` | `string?` | `'true'`/`'false'` — auto session extension |
+| `allowSavingMyResearchAssistanceSearchHistory` | `string?` | Research assistant history opt-in |
+| `email` | `string?` | User's email address |
+| `[key: string]` | `string \| undefined` | Index signature for additional settings |
+
+---
+
+### Search types
+
+Defined in `src/models/search.model.ts`.
+
+#### `SearchParams`
+
+Parameters sent to the host search engine. `q` and `scope` are required; all other fields are optional.
+
+| Field | Type | Description |
+|---|---|---|
+| `q` | `string` | Query string |
+| `scope` | `string` | Search scope identifier |
+| `skipDelivery` | `stringBoolean?` | Skip delivery enrichment (`'Y'`/`'N'`) |
+| `offset` | `number?` | Pagination offset |
+| `limit` | `number?` | Results per page |
+| `sort` | `string?` | Sort field |
+| `inst` | `string?` | Institution code |
+| `refEntryActive` | `boolean?` | Enable reference entry mode |
+| `disableCache` | `boolean?` | Bypass server-side cache |
+| `newspapersActive` | `boolean?` | Include newspaper source |
+| `qInclude` | `string[]?` | Facet include filters |
+| `qExclude` | `string[]?` | Facet exclude filters |
+| `multiFacets` | `string[]?` | Multi-select facet values |
+| `isRapido` | `boolean?` | Rapido resource-sharing search |
+| `pfilter` | `string?` | Pre-filter string |
+| `explain` | `string?` | Debug explain mode |
+| `tab` | `string?` | Active search tab |
+| `originalNLSquery` | `string?` | Original natural language query |
+| `isNLS` | `boolean?` | Natural language search flag |
+| `mode` | `string?` | Search mode |
+| `isCDSearch` | `boolean?` | Combined digital search flag |
+| `pcAvailability` | `boolean?` | Primo Central availability check |
+| `searchInFulltextUserSelection` | `boolean?` | Full-text search user preference |
+| `newspapersSearch` | `boolean?` | Newspaper-specific search |
+| `citationTrailFilterByAvailability` | `boolean?` | Filter citation trail by availability |
+| `isRAsearch` | `boolean?` | Research Assistant search |
+| `isNaturalLanguageSearch` | `boolean?` | NLS flag (alternative) |
+| `featuredNewspapersIssnList` | `string?` | Featured newspaper ISSNs |
+| `journals` | `string?` | Journal filter |
+| `databases` | `string?` | Database filter |
+| `entityName` | `string?` | Named entity filter |
+| `lang` | `string?` | Language filter |
+| `browseField` | `string?` | Browse field identifier |
+| `fn` | `string?` | Function identifier |
+| `searchWord` | `string?` | Browse search word |
+| `browseParams` | `string?` | Additional browse parameters |
+| `isRelatedItems` | `boolean?` | Related items search flag |
+| `analyticAction` | `string?` | Analytics event identifier |
+
+#### `SearchParamsWithStrParams`
+
+Same as `SearchParams` but `qInclude`, `qExclude`, and `multiFacets` are pre-serialised as pipe-delimited strings instead of arrays. Used internally when constructing URL query strings.
+
+```typescript
+type SearchParamsWithStrParams = Omit<SearchParams, 'qInclude' | 'qExclude' | 'multiFacets'> & {
+  qInclude?: string;
+  qExclude?: string;
+  multiFacets?: string;
 }
 ```
+
+#### `SearchData` / `SearchMetaData`
+
+`SearchData` is the full response returned by the search API.
+`SearchMetaData` is `SearchData` without the `docs` array (i.e. `Omit<SearchData, 'docs'>`).
+
+| Field | Type | Description |
+|---|---|---|
+| `beaconO22` | `string` | Beacon identifier |
+| `info` | `Info` | Totals, pagination info |
+| `highlights` | `Highlights` | Highlighted term fragments |
+| `docs` | `Doc[]` | Array of result documents |
+| `facets` | `Facet[]?` | Available facet groups |
+| `timelog` | `Timelog` | Server-side performance timings |
+| `did_u_mean` | `string?` | Spelling suggestion |
+| `expandedSearchAfterZeroResults` | `boolean?` | Search was expanded due to zero results |
+
+#### `Info`
+
+Pagination and result-count metadata.
+
+| Field | Type | Description |
+|---|---|---|
+| `totalResultsLocal` | `number` | Local index result count |
+| `totalResultsPC` | `number` | Primo Central result count |
+| `total` | `number` | Combined total |
+| `first` | `number` | Index of first returned result |
+| `last` | `number` | Index of last returned result |
+| `explain` | `Explain` | Error/debug messages |
+| `browseGap` | `number?` | Gap for browse navigation |
+| `hasMoreResults` | `boolean?` | More results beyond `last` |
+
+#### `Facet` / `FacetValue`
+
+```typescript
+interface Facet {
+  name:   string;       // e.g. 'rtype', 'creator', 'lang'
+  values: FacetValue[];
+}
+
+interface FacetValue {
+  value:        string;
+  count:        number;
+  mergedLabel?: string[];
+  deiData?:     DeiData;   // Diversity, Equity & Inclusion metadata
+}
+
+interface DeiData {
+  isDei?:   boolean;
+  deiNote?: SafeHtml;
+}
+```
+
+#### `Doc`
+
+A single search result entity. This is the main object you work with when reading results from the store.
+
+| Field | Type | Description |
+|---|---|---|
+| `@id` | `string` | Unique entity ID (used as store key) |
+| `context` | `Context` | Record context (`L`, `PC`, `SP`, `U`, `NP`) |
+| `adaptor` | `Adaptor` | Backend adaptor that produced this record |
+| `pnx` | `Pnx` | Normalised record data |
+| `extras` | `Extras?` | Citation trail and times-cited data |
+| `enrichment` | `Enrichment?` | Virtual-browse enrichment |
+| `thumbnailForCD` | `ThumbnailForCD?` | Combined digital thumbnail info |
+| `unpaywallStatus` | `LoadingStatus?` | Async load status of Unpaywall links |
+| `delivery` | `DocDelivery?` | Delivery/availability data |
+| `expired` | `boolean?` | Whether the record is expired |
+| `origRecordId` | `string?` | Original record ID before de-duplication |
+
+#### `Context` (enum)
+
+| Value | Description |
+|---|---|
+| `L` | Local index |
+| `PC` | Primo Central |
+| `SP` | SP adaptor |
+| `U` | Unified |
+| `NP` | Newspapers |
+
+#### `Adaptor` (enum)
+
+| Value | Description |
+|---|---|
+| `LocalSearchEngine` | Local Search Engine |
+| `PrimoCentral` | Primo Central |
+| `PrimoVEDeepSearch` | Primo VE Deep Search |
+| `EbscoLocal` | EBSCO local connector |
+| `WorldCatLocal` | WorldCat local connector |
+| `SummonLocal` | Summon local connector |
+| `SearchWebhook` | Search webhook adaptor |
+| `WebHook` | Generic webhook adaptor |
+
+#### `Pnx`
+
+Normalised record data structure. Most fields are string-array dictionaries to accommodate multi-valued MARC fields.
+
+| Field | Type | Description |
+|---|---|---|
+| `display` | `{ [key: string]: string[] }` | Display fields (title, creator, description, …) |
+| `control` | `Control` | Identifiers and system-level control fields |
+| `addata` | `{ [key: string]: string[] }` | OpenURL/citation metadata |
+| `sort` | `Sort` | Sortable field values |
+| `facets` | `{ [key: string]: string[] }` | Facet field values |
+| `links` | `Links?` | URLs (full text, thumbnail, OpenURL, …) |
+| `search` | `Search?` | Searchable field copies |
+| `delivery` | `PnxDelivery?` | Lightweight delivery info (full delivery is on `Doc.delivery`) |
+
+#### `Control`
+
+| Field | Type |
+|---|---|
+| `sourcerecordid` | `string[]` |
+| `recordid` | `string[]` |
+| `sourceid` | `string[] \| string` |
+| `originalsourceid` | `string[]` |
+| `sourcesystem` | `Sourcesystem[]` |
+| `sourceformat` | `Sourceformat[]` |
+| `score` | `Array<number \| string>` |
+| `isDedup` | `boolean?` |
+| `recordtype` | `string[]?` |
+| `sourcetype` | `string[]?` |
+| `addsrcrecordid` | `string[]?` |
+| `pqid` | `string[]?` |
+| `jstorid` | `string[]?` |
+| `galeid` | `string[]?` |
+| `gtiid` | `string[]?` |
+| `attribute` | `string[]?` |
+| `rapidosourcerecordid` | `string[]?` |
+| `networklinkedrecordid` | `string[]?` |
+| `colldiscovery` | `string[]?` |
+| `save_score` | `number[]?` |
+
+#### `Links`
+
+| Field | Type |
+|---|---|
+| `openurl` | `string[]` |
+| `thumbnail` | `string[]` |
+| `linktohtml` | `string[]` |
+| `openurlfulltext` | `string[]` |
+| `linktorsrc` | `string[]?` |
+| `linktopdf` | `string[]?` |
+| `docinsights` | `string[]?` |
+| `backlink` | `string[]?` |
+| `linktorsrcadditional` | `string[]?` |
+| `openurladditional` | `string[]?` |
+| `unpaywalllink` | `string[]?` |
+
+#### `Sort`
+
+| Field | Type |
+|---|---|
+| `title` | `string[]` |
+| `creationdate` | `string[]` |
+| `author` | `string[]?` |
+
+#### `Search`
+
+| Field | Type |
+|---|---|
+| `recordid` | `string[]` |
+| `issn` | `string[]` |
+| `isbn` | `string[]` |
+| `title` | `string[]` |
+| `creatorcontrib` | `string[]` |
+
+#### `PnxDelivery`
+
+| Field | Type |
+|---|---|
+| `fulltext` | `string[]` |
+| `delcategory` | `string[]` |
+| `availabilityLinkUrl` | `string` |
+
+#### `Sourceformat` (enum)
+
+| Value |
+|---|
+| `Marc21` = `'MARC21'` |
+| `XML` = `'XML'` |
+| `ESPLORO` = `'ESPLORO'` |
+
+#### `Sourcesystem` (enum)
+
+| Value |
+|---|
+| `Ils` = `'ILS'` |
+| `Other` = `'Other'` |
+
+---
+
+#### `DocDelivery`
+
+Full delivery/availability record attached to each `Doc` after the delivery enrichment effect runs.
+
+| Field | Type | Description |
+|---|---|---|
+| `deliveryCategory` | `string[]` | Delivery categories (e.g. `'Alma-E'`) |
+| `availability` | `string[]` | Raw availability strings |
+| `displayedAvailability` | `string` | Human-readable availability label |
+| `displayLocation` | `boolean` | Whether to display location info |
+| `additionalLocations` | `boolean` | Whether additional locations exist |
+| `physicalItemTextCodes` | `string` | Physical item text code |
+| `feDisplayOtherLocations` | `boolean` | Feature flag for "other locations" panel |
+| `almaOpenurl` | `string` | OpenURL for Alma |
+| `recordInstitutionCode` | `string` | Owning institution code |
+| `sharedDigitalCandidates` | `string[]` | CDL candidate identifiers |
+| `hideResourceSharing` | `boolean` | Suppress resource-sharing links |
+| `GetIt1` | `GetIt1[]` | GetIt link categories |
+| `link` | `DeliveryLink[]?` | Additional delivery links |
+| `availabilityLinks` | `string[]?` | Availability link labels |
+| `availabilityLinksUrl` | `string[]?` | Availability link URLs |
+| `holding` | `Location[]?` | Physical holding locations |
+| `bestlocation` | `Location?` | Best/primary holding location |
+| `electronicServices` | `ElectronicService[]?` | Electronic access services |
+| `additionalElectronicServices` | `AdditionalElectronicService?` | Categorised additional services |
+| `hasD` | `boolean?` | Has digital representation |
+| `digitalAuxiliaryMode` | `boolean?` | Digital auxiliary viewer mode |
+| `serviceMode` | `string[]?` | Service mode codes |
+| `consolidatedCoverage` | `string?` | Coverage summary string |
+| `isFilteredHoldings` | `boolean?` | Holdings filtered by policy |
+| `physicalServiceId` | `string?` | Physical service identifier |
+| `recordOwner` | `string?` | Record owner code |
+| `almaInstitutionsList` | `AlmaInstitutionsList[]?` | Network Zone institution list |
+| `filteredByGroupServices` | `GroupServices[]?` | Group-filtered services |
+| `hasFilteredServices` | `string?` | Flag for filtered services |
+| `electronicContextObjectId` | `string?` | Electronic context object ID |
+| `mayAlsoBeFoundAt` | `MayAlsoBeFoundAtItem[]?` | Cross-institution availability |
+
+---
+
+#### Delivery sub-types
+
+##### `Location`
+
+Physical holding location.
+
+| Field | Type |
+|---|---|
+| `organization` | `string` |
+| `libraryCode` | `string` |
+| `mainLocation` | `string` |
+| `subLocation` | `string` |
+| `subLocationCode` | `string` |
+| `callNumber` | `string` |
+| `availabilityStatus` | `string` |
+| `holdId` | `string` |
+| `holKey` | `string` |
+| `uniqId` | `string` |
+| `ilsApiId` | `string?` |
+| `isValidUser` | `boolean?` |
+| `matchForHoldings` | `MatchForHolding[]?` |
+| `stackMapUrl` | `string?` |
+| `relatedTitle` | `string?` |
+
+##### `MatchForHolding`
+
+| Field | Type |
+|---|---|
+| `matchOn` | `string` |
+| `holdingRecord` | `string` |
+
+##### `ElectronicService`
+
+One electronic access option (full text, open access, etc.).
+
+| Field | Type |
+|---|---|
+| `adaptorid` | `string` |
+| `ilsApiId` | `string` |
+| `serviceUrl` | `string` |
+| `licenceExist` | `string` |
+| `packageName` | `string` |
+| `availiability` | `string` |
+| `authNote` | `string` |
+| `publicNote` | `string` |
+| `hasAccess` | `boolean` |
+| `serviceType` | `string` |
+| `registrationRequired` | `boolean` |
+| `numberOfFiles` | `number` |
+| `cdlItemAvailable` | `boolean` |
+| `cdl` | `boolean` |
+| `parsedAvailability` | `string[]` |
+| `licenceUrl` | `string` |
+| `relatedTitle` | `string` |
+| `serviceDescription` | `string?` |
+| `deniedNote` | `string?` |
+| `fileType` | `string?` |
+| `firstFileSize` | `string?` |
+| `representationEntityType` | `string?` |
+| `contextServiceId` | `string?` |
+| `publicAccessModel` | `string?` |
+| `representationViewerServiceCode` | `string?` |
+| `fromNetwork` | `boolean?` |
+| `filteredByAfGroups` | `string?` |
+| `supported` | `boolean?` |
+
+##### `AdditionalElectronicService`
+
+Categorised groups of additional electronic services.
+
+| Field | Type |
+|---|---|
+| `OpenURL` | `ElectronicService[]` |
+| `LinktorsrcOA` | `ElectronicService[]` |
+| `LinktorsrcNonOA` | `ElectronicService[]` |
+| `RelatedServices` | `ElectronicService[]` |
+
+##### `GetIt1` / `GetItLinks`
+
+```typescript
+interface GetIt1 {
+  category: string;
+  links: GetItLinks[];
+}
+
+interface GetItLinks {
+  '@id': string;
+  adaptorid: string;
+  displayText: string | null;
+  getItTabText: string;
+  ilsApiId: string;
+  inst4opac: string;
+  isLinktoOnline: boolean;
+  link: string;
+}
+```
+
+##### `DeliveryLink`
+
+| Field | Type |
+|---|---|
+| `displayLabel` | `string?` |
+| `linkType` | `string?` |
+| `linkURL` | `string?` |
+| `@id` | `string?` |
+| `publicNote` | `string?` |
+
+##### `AlmaInstitutionsList`
+
+| Field | Type |
+|---|---|
+| `availabilityStatus` | `string` |
+| `envURL` | `string` |
+| `instCode` | `string` |
+| `instId` | `string` |
+| `instName` | `string` |
+| `getitLink` | `getitLink[]` |
+
+##### `getitLink`
+
+| Field | Type |
+|---|---|
+| `linkRecordId` | `string` |
+| `displayText` | `string` |
+
+##### `GroupServices`
+
+| Field | Type |
+|---|---|
+| `unitName` | `string` |
+| `unitType` | `string` |
+| `services` | `ElectronicService[]` |
+| `serviceStatus` | `LoadingStatus?` |
+
+##### `MayAlsoBeFoundAtItem`
+
+| Field | Type |
+|---|---|
+| `code` | `string` |
+| `displayLabel` | `string` |
+| `additionalLabel` | `string` |
+| `linkType` | `string` |
+| `linkURL` | `string` |
+| `computedDisplayLabel` | `string` |
+| `computedDisplayWords` | `string[]` |
+
+##### `ThumbnailForCD`
+
+| Field | Type |
+|---|---|
+| `link` | `DeliveryLink[]?` |
+| `hasD` | `boolean?` |
+
+##### `IEDeliveryRecord`
+
+| Field | Type |
+|---|---|
+| `recId` | `string` |
+| `sharedDigitalCandidates` | `string[] \| null` |
+
+##### `MergedDelivery`
+
+| Field | Type |
+|---|---|
+| `docDelivery` | `DocDelivery` |
+| `recordId` | `string` |
+
+---
+
+#### Search result sub-types
+
+##### `Highlights`
+
+Highlighted term fragments returned for each field.
+
+| Field | Type |
+|---|---|
+| `general` | `string[]` |
+| `creator` | `string[]` |
+| `contributor` | `string[]` |
+| `subject` | `string[]` |
+| `title` | `string[]` |
+| `addtitle` | `string[]` |
+| `alttitle` | `string[]` |
+| `vertitle` | `string[]` |
+| `termsUnion` | `string[]` |
+| `snippet` | `string[]` |
+
+##### `Timelog`
+
+Server-side performance timings (all values are strings or numbers from the API).
+
+| Field | Type |
+|---|---|
+| `BUILD_RESULTS_RETRIVE_FROM_DB` | `string` |
+| `CALL_SOLR_GET_IDS_LIST` | `string` |
+| `RETRIVE_FROM_DB_COURSE_INFO` | `string` |
+| `RETRIVE_FROM_DB_RECORDS` | `string` |
+| `RETRIVE_FROM_DB_RELATIONS` | `string` |
+| `PRIMA_LOCAL_INFO_FACETS_BUILD_DOCS_HIGHLIGHTS` | `string` |
+| `PRIMA_LOCAL_SEARCH_TOTAL` | `string` |
+| `PC_SEARCH_CALL_TIME` | `string` |
+| `PC_BUILD_JSON_AND_HIGLIGHTS` | `string` |
+| `PC_SEARCH_TIME_TOTAL` | `string` |
+| `BUILD_BLEND_AND_CACHE_RESULTS` | `number` |
+| `BUILD_COMBINED_RESULTS_MAP` | `number` |
+| `COMBINED_SEARCH_TIME` | `number` |
+| `PROCESS_COMBINED_RESULTS` | `number` |
+| `FEATURED_SEARCH_TIME` | `number` |
+
+##### `Explain`
+
+| Field | Type |
+|---|---|
+| `errorMessages` | `string[]` |
+
+##### `FullDisplayQueryParams`
+
+URL query parameters for the full-display route.
+
+| Field | Type |
+|---|---|
+| `docid` | `string` |
+| `context` | `Context?` |
+| `adaptor` | `Adaptor?` |
+| `isFrbr` | `boolean?` |
+| `search_scope` | `string?` |
+| `isHighlightedRecord` | `boolean?` |
+| `tab` | `string?` |
+| `vid` | `string?` |
+| `state` | `string?` |
+| `lang` | `string?` |
+| `newspapersSearch` | `boolean?` |
+
+##### `FullDisplayParams`
+
+Internal params for loading a full-display record.
+
+| Field | Type |
+|---|---|
+| `docid` | `string` |
+| `context` | `Context?` |
+| `adaptor` | `Adaptor?` |
+| `isFrbr` | `boolean?` |
+| `scope` | `string?` |
+| `isHighlightedRecord` | `boolean?` |
+
+##### `RecordMainDetailsIfc`
+
+| Field | Type |
+|---|---|
+| `pnx` | `Pnx` |
+
+##### `Facets`
+
+Top-level wrapper returned by the facets API endpoint.
+
+| Field | Type |
+|---|---|
+| `beaconO22` | `string` |
+| `facets` | `Facet[]` |
+
+##### `TopBarSelectedFilter`
+
+A filter chip shown in the search top bar.
+
+| Field | Type |
+|---|---|
+| `value` | `string` |
+| `filterType` | `string?` |
+| `mergedLabel` | `string[] \| undefined` |
+
+---
+
+#### Enrichment & citation types
+
+##### `Enrichment`
+
+| Field | Type |
+|---|---|
+| `virtualBrowseObject` | `VirtualBrowseObject` |
+| `bibVirtualBrowseObject` | `VirtualBrowseObject` |
+
+##### `VirtualBrowseObject`
+
+| Field | Type |
+|---|---|
+| `isVirtualBrowseEnabled` | `boolean` |
+| `callNumber` | `string` |
+| `callNumberBrowseField` | `string` |
+
+##### `Extras`
+
+| Field | Type |
+|---|---|
+| `citationTrails` | `CitationTrails` |
+| `timesCited` | `TimesCited` |
+
+##### `CitationTrails`
+
+| Field | Type |
+|---|---|
+| `citing` | `string[]` |
+| `citedby` | `string[]` |
+
+##### `CitationTrailsTile`
+
+| Field | Type |
+|---|---|
+| `recordId` | `string` |
+| `title` | `string` |
+| `author` | `string` |
+| `type` | `string` |
+| `frbrgroupid` | `string` |
+| `seed_id` | `string` |
+
+##### `SeedsInfo`
+
+| Field | Type |
+|---|---|
+| `citationType` | `string` |
+| `creator` | `string[]` |
+| `frbrGroupId` | `string` |
+| `pnxId` | `string` |
+| `title` | `string` |
+
+##### `TimesCited`
+
+| Field | Type |
+|---|---|
+| `scopus` | `Scopus?` |
+| `wos` | `WebOfScience?` |
+
+##### `Scopus`
+
+| Field | Type |
+|---|---|
+| `citedRedId` | `string?` |
+| `extensionVal` | `string?` |
+
+##### `WebOfScience`
+
+| Field | Type |
+|---|---|
+| `citedRedId` | `string?` |
+| `extensionVal` | `string?` |
+| `wosFinalLink` | `string?` |
+
+##### `CitationType` (enum)
+
+| Value |
+|---|
+| `CITING` = `'citing'` |
+| `CITEDBY` = `'citedby'` |
+
+---
+
+#### Utility map types
+
+```typescript
+type stringBoolean = 'N' | 'Y';
+
+type IgnoreMapSimpleString  = { [key: string]: string };
+type IgnoreMapSimpleBoolean = { [key: string]: boolean };
+type IgnoreMapMulti         = { [key: string]: number | string | string[] | undefined | null };
+
+type SearchMetaData = Omit<SearchData, 'docs'>;
+```
+
+Constant exported from `search.model.ts`:
+
+```typescript
+const SUPPORTED_ELECTRONIC_TYPES_FOR_DIGITAL_VIEWER =
+  ['jpg', 'tif', 'tiff', 'gif', 'png', 'pdf', 'jp2', 'jpeg'];
+```
+
+---
+
+### Filter types
+
+Defined in `src/models/filter.model.ts`.
+
+#### `FilterState`
+
+| Field | Type | Description |
+|---|---|---|
+| `status` | `LoadingStatus` | Current load status of the filter slice |
+| `isRememberAll` | `boolean` | Whether "Remember All" is toggled on |
+| `previousSearchQuery` | `{ searchTerm: string \| undefined; scope: string \| undefined }` | Last search term and scope before filter change |
+| `includedFilter` | `selectedFilters[] \| null` | Active include facet filters |
+| `excludedFilter` | `selectedFilters[] \| null` | Active exclude facet filters |
+| `multiSelectedFilter` | `MultiSelectedFilter[] \| null` | Multi-select facet filters |
+| `resourceTypeFilter` | `ResourceTypeFilterModel \| null` | Active resource-type filter |
+| `isFiltersOpen` | `boolean` | Whether the filter panel is open |
+
+#### `selectedFilters`
+
+| Field | Type |
+|---|---|
+| `name` | `string` |
+| `values` | `string[]` |
+
+#### `MultiSelectedFilter`
+
+| Field | Type |
+|---|---|
+| `name` | `string` |
+| `values` | `MultiSelectedFilterValue[]` |
+
+#### `MultiSelectedFilterValue`
+
+| Field | Type |
+|---|---|
+| `value` | `string` |
+| `filterType` | `FilterType` |
+
+#### `FilterType` (enum)
+
+| Value |
+|---|
+| `Include` = `'include'` |
+| `Exclude` = `'exclude'` |
+
+#### `ResourceTypeFilterModel`
+
+| Field | Type |
+|---|---|
+| `resourceType` | `string` |
+| `count` | `number` |
+
+---
+
+## Actions reference
+
+All action creators are exported from the package root:
+
+```typescript
+import { searchAction, loadFiltersAction, setDecodedJwt } from '@libis/primo-shared-state';
+```
+
+### Search actions
+
+| Creator | Action type | Props |
+|---|---|---|
+| `searchAction` | `[Search] Load search` | `{ searchParams: SearchParams; searchType?: string }` |
+| `searchSuccessAction` | `[Search] Load search success` | `{ searchResultsData: SearchData }` |
+| `searchFailedAction` | `[Search] Load search failed` | — |
+| `clearSearchAction` | `[Search] clear search` | — |
+| `pageLimitChangedAction` | `[Search] Page Limit Changed` | `{ limit: number }` |
+| `pageNumberChangedAction` | `[Search] Page Number Changed` | `{ pageNumber: number }` |
+| `sortByChangedAction` | `[search] Sort By Changed` ¹ | `{ sort: string }` |
+| `fetchUnpaywallLinksAction` | `[Search] Fetch unpaywall links` | `{ recordsToUpdate: Doc[] }` |
+| `updateIsSavedSearch` | `[Search] Update Is Saved Search` | `{ isSavedSearch: boolean }` |
+| `setSearchNotificationMsg` | `[search] Set Search Notification Message` ¹ | `{ msg: string }` |
+| `saveCurrentSearchTermAction` | `[Search] save current search term` | `{ searchTerm: string }` |
+
+¹ Note: action type string uses lowercase `[search]`, not `[Search]` — match exactly when using `ofType`.
+
+### Filter actions
+
+| Creator | Action type | Props |
+|---|---|---|
+| `loadFiltersAction` | `[Filter] Load Filter` | `{ searchParams: SearchParams }` |
+| `filtersSuccessAction` | `[Filter] Load Filter Success` | `{ filters: Facet[] }` |
+| `filterFailedAction` | `[Filter] Load Filter Failed` | — |
+| `updateSortByParam` | `[Filter] Update Sort By Param` | `{ sort: string }` |
+
+### User actions
+
+| Creator | Action type | Props |
+|---|---|---|
+| `setDecodedJwt` | `[User] Set Decoded Jwt` | `{ decodedJwt: DecodedJwt }` |
+| `resetJwtAction` | `[User] reset jwt` | `{ logoutReason: LogoutReason; url?: string }` |
+| `loadUserSettingsSuccessAction` | `[User-Settings] save user settings` | `{ userSettings: UserSettings; isNewSession: boolean }` |
+| `resetUserSettingsSuccessAction` | `[User-Settings] reset user settings success` | — |
+| `doneChangeUserSettingsLanguageAction` | `[User-Settings] Done Change User Settings Language` | `{ value: string }` |
+| `doneSaveHistoryToggleAction` | `[User-Settings] Done Update Save history toggle` | `{ value: string }` |
+| `doneUseHistoryToggleAction` | `[User-Settings] Done Update Use history toggle` | `{ value: string }` |
+| `doneAutoExtendMySessionToggleAction` | `[User-Settings] Done Update Auto Extend My Session toggle` | `{ value: string }` |
+| `setLoginFromStateAction` | `[User-Settings] set login from state` | `{ value: string }` |
+| `changeRaSaveSearchDoneAction` | `[User-settings] dont update research-Assistant save search toggle` | `{ value: string }` |
+| `resetLogoutReason` | `[User-Settings] reset logout reason` | — |
 
 ---
 
