@@ -263,6 +263,84 @@ import {
 
 ---
 
+## Why not all host actions are exported
+
+`shared-actions.ts` only exports actions that a remote module can **safely dispatch**. Many actions in the host app are deliberately omitted. The decision follows one rule:
+
+> **An action is safe to export only if a remote module can dispatch it without corrupting state or triggering unintended HTTP side-effects.**
+
+### The three categories
+
+#### ✅ Included — commands and UI-state writes
+
+These are actions a remote legitimately wants to *trigger*. They either start a well-defined operation in the host (a search, a filter load) or write a simple scalar to the store with no dangerous side-effects:
+
+| Example | Why safe |
+|---|---|
+| `[Search] Load search` | Tells the host to run a search — that is the whole point |
+| `[Search] Page Limit Changed` | Pure state write, no HTTP call attached |
+| `[Search] clear search` | Resets state, no HTTP call |
+| `[Filter] Load Filter` | Triggers a filter HTTP call via the host's effect — remote supplies the params |
+| `[User-Settings] Done Change User Settings Language` | Writes a string to the user slice, no destructive side-effect |
+
+#### ❌ Excluded — effect outputs (success/failure actions emitted after HTTP calls)
+
+These are actions the host's effects **emit** after an HTTP call completes. They carry real server-response payloads that a remote module cannot construct legitimately. Dispatching them from a remote would corrupt store state and/or re-trigger HTTP effects.
+
+A concrete example is `deliverySuccessAction`. Its action chain looks like this:
+
+```
+searchSuccessAction              ← remote CAN dispatch
+    └─► [Search] Load delivery   ← DeliveryEffect fires an HTTP call
+            └─► deliverySuccessAction   ← effect emits this when HTTP responds
+                    │
+                    ├─► search.reducer  updates pnx data on every Doc entity
+                    └─► DeliveryEffect  triggers a second HTTP call (eDelivery)
+```
+
+If a remote dispatched `deliverySuccessAction` with a fabricated or incomplete `Doc[]` payload it would **overwrite `pnx` data** on all current search result entities (blanking display fields, availability, links) and simultaneously fire a real HTTP call to the delivery service as a side-effect.
+
+The same reasoning applies to all other `*SuccessAction` / `*FailedAction` variants: `[Search] Load search success`, `[full-display] load full display success`, `[Search] Load delivery success`, etc. None of these are exported.
+
+#### ❌ Excluded — actions that trigger login/logout HTTP flows
+
+Actions such as `[User] load jwt guest`, `[User] load logged user jwt`, and `[User] reset jwt` kick off OAuth/ILS authentication flows managed entirely by the host. A remote module has no business initiating or short-circuiting those flows.
+
+### Decision table
+
+| Category | Exported | Reason |
+|---|---|---|
+| Commands — start a search / filter load | ✅ | Remote legitimately triggers these |
+| Pure UI-state toggles — pagination, sort, clear | ✅ | No HTTP side-effects |
+| Safe settings writes — language, history toggles | ✅ | Only mutate the user settings slice |
+| Effect outputs — `*SuccessAction`, `*FailedAction` | ❌ | Cannot produce valid payload; corrupts state and re-triggers HTTP effects |
+| Auth flow triggers — JWT load, login, logout | ❌ | Authentication is owned entirely by the host |
+
+### Listening to excluded actions without dispatching them
+
+If you need to *react* to an action that is not exported (e.g. do something after delivery finishes loading), use `Actions` + `ofType` to listen passively — **do not dispatch**:
+
+```typescript
+import { inject } from '@angular/core';
+import { Actions, ofType } from '@ngrx/effects';
+
+// Inside a service or component constructor:
+private actions$ = inject(Actions);
+
+constructor() {
+  // React to delivery completing without dispatching anything
+  this.actions$.pipe(
+    ofType('[Search] Load delivery success')   // use the literal type string
+  ).subscribe(({ docsToUpdate }) => {
+    // read-only reaction — never re-dispatch this action
+  });
+}
+```
+
+> Do **not** register an `EffectsModule.forFeature()` in the remote with effects that handle the same action type strings as the host — that causes every HTTP call to fire twice.
+
+---
+
 ## API reference
 
 ### `UserStateService`
