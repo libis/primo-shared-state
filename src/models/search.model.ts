@@ -42,6 +42,7 @@ export interface SearchParams {
   browseParams?: string,
   isRelatedItems?: boolean,
   analyticAction?: string,
+  searchTerm?: string,
 }
 
 export interface SearchParamsWithStrParams   extends Omit<SearchParams, 'qInclude' | 'qExclude' | 'multiFacets'> {

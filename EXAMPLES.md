@@ -507,3 +507,476 @@ export class SafeSearchComponent {
   constructor(private searchState: SearchStateService) {}
 }
 ```
+
+## Reading View Configuration
+
+Access institutional configuration, feature flags, mapping tables, and scopes — all read-only.
+
+```typescript
+import { Component, OnInit } from '@angular/core';
+import {
+  ViewConfigStateService,
+  SystemConfiguration,
+  FeatureFlags,
+  Scope,
+} from '@libis/primo-shared-state';
+
+@Component({
+  selector: 'app-config-aware-widget',
+  template: `
+    <div class="config-widget">
+      <p>Institution: {{ institutionCode() }} | VID: {{ vid() }}</p>
+      <p>Language: {{ interfaceLanguage() }}</p>
+
+      @if (featureFlags(); as flags) {
+        <ul class="flags">
+          @for (key of flagKeys(flags); track key) {
+            <li>{{ key }}: {{ flags[key] ? 'ON' : 'OFF' }}</li>
+          }
+        </ul>
+      }
+
+      <h4>Available Scopes</h4>
+      @for (scope of scopes() ?? []; track scope.scopeName) {
+        <span class="scope-chip">{{ scope.scopeDisplayName }}</span>
+      }
+    </div>
+  `
+})
+export class ConfigAwareWidgetComponent implements OnInit {
+  // Signal API — reactive, no subscriptions needed
+  institutionCode = this.viewConfig.institutionCodeSignal();
+  vid             = this.viewConfig.vidSignal();
+  interfaceLanguage = this.viewConfig.interfaceLanguageSignal();
+  featureFlags    = this.viewConfig.featureFlagsSignal();
+  scopes          = this.viewConfig.scopesSignal();
+
+  constructor(private viewConfig: ViewConfigStateService) {}
+
+  async ngOnInit() {
+    // Promise API — useful for one-time init logic
+    const sysConfig = await this.viewConfig.getSystemConfiguration();
+    if (sysConfig) {
+      console.log('Search engine:', sysConfig.searchEngine);
+      console.log('Default sort:', sysConfig.defaultSearchSortField);
+    }
+
+    const tables = await this.viewConfig.getMappingTables();
+    if (tables) {
+      console.log('Resource type icons:', tables['Resource Type Icons']);
+    }
+  }
+
+  flagKeys(flags: FeatureFlags): string[] {
+    return Object.keys(flags);
+  }
+}
+```
+
+## Displaying Entity / Linked Data
+
+Read-only access to linked-data entity state (person, organisation, location pages).
+
+```typescript
+import { Component } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import {
+  EntityStateService,
+  EntityViewModel,
+  EntityType,
+} from '@libis/primo-shared-state';
+
+@Component({
+  selector: 'app-entity-card',
+  template: `
+    @if (entityStatus() === 'success') {
+      @if (entity(); as vm) {
+        <div class="entity-card">
+          @if (vm.entityThumbnail?.url) {
+            <img [src]="vm.entityThumbnail.url" [alt]="vm.entityDetails?.name" />
+          }
+
+          <h2>{{ vm.entityDetails?.name }}</h2>
+          <span class="badge">{{ vm.entityType }}</span>
+
+          @if (vm.entityDetails?.description) {
+            <p>{{ vm.entityDetails.description }}</p>
+          }
+
+          @if (vm.entityDetails?.properties?.length) {
+            <dl>
+              @for (prop of vm.entityDetails.properties; track prop.label) {
+                <dt>{{ prop.label }}</dt>
+                <dd>{{ prop.value }}</dd>
+              }
+            </dl>
+          }
+        </div>
+
+        <!-- Related documents -->
+        @if (relatedDocs()?.length) {
+          <h3>Related Documents</h3>
+          @for (group of relatedDocs()!; track group.searchMode) {
+            <div class="related-group">
+              <h4>{{ group.searchMode }} ({{ group.total }})</h4>
+              @for (doc of group.docs; track doc['@id']) {
+                <p>{{ doc.pnx.display.title?.[0] }}</p>
+              }
+            </div>
+          }
+        }
+
+        <!-- Related entities -->
+        @if (relatedEntities()?.length) {
+          <h3>Related Entities</h3>
+          @for (group of relatedEntities()!; track group.searchMode) {
+            <div class="related-group">
+              <h4>{{ group.searchMode }} ({{ group.total }})</h4>
+              @for (ent of group.entities; track ent.entityDetails?.name) {
+                <p>{{ ent.entityDetails?.name }} ({{ ent.entityType }})</p>
+              }
+            </div>
+          }
+        }
+      }
+    } @else if (entityStatus() === 'loading') {
+      <p>Loading entity...</p>
+    }
+  `
+})
+export class EntityCardComponent {
+  entity          = this.entityState.entityViewModelSignal();
+  entityStatus    = this.entityState.entityStatusSignal();
+  relatedDocs     = this.entityState.relatedDocsSignal();
+  relatedEntities = this.entityState.relatedEntitiesSignal();
+
+  constructor(private entityState: EntityStateService) {}
+}
+```
+
+## Account Dashboard (Patron Data)
+
+Read-only access to account counters, loans, requests, fines, and search history.
+
+```typescript
+import { Component } from '@angular/core';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import {
+  AccountStateService,
+  UserStateService,
+  LoanItem,
+  MappedRequestItem,
+  MappedFineItem,
+  SearchHistoryItem,
+} from '@libis/primo-shared-state';
+
+@Component({
+  selector: 'app-account-dashboard',
+  template: `
+    <div class="account-dashboard">
+      <h2>My Account</h2>
+
+      <!-- Counters -->
+      <div class="counters">
+        <div class="counter-card">
+          <span class="count">{{ loansCounter() ?? 0 }}</span>
+          <span class="label">Loans</span>
+        </div>
+        <div class="counter-card">
+          <span class="count">{{ requestsCounter() ?? 0 }}</span>
+          <span class="label">Requests</span>
+        </div>
+        <div class="counter-card">
+          <span class="count">{{ finesCounter() ?? 0 }}</span>
+          <span class="label">Fines</span>
+        </div>
+      </div>
+
+      <!-- Active Loans -->
+      @if (loansList(); as loans) {
+        <h3>Active Loans</h3>
+        @for (loan of loans; track loan.loanid) {
+          <div class="loan-item" [class.overdue]="isOverdue(loan)">
+            <strong>{{ loan.title }}</strong>
+            <p>Due: {{ loan.duedate }} {{ loan.duehour }}</p>
+            <p>Library: {{ loan.mainlocationname }}</p>
+            @if (loan.alerts?.length) {
+              <span class="alert-badge">{{ loan.alerts.length }} alert(s)</span>
+            }
+          </div>
+        }
+      }
+
+      <!-- Requests -->
+      @if (requestsList(); as requests) {
+        <h3>Active Requests</h3>
+        @for (req of requests; track req.requestId) {
+          <div class="request-item">
+            <strong>{{ req.title }}</strong>
+            <p>{{ req.firstLine }}</p>
+            <p>Status: {{ req.status }}</p>
+            @if (req.isCancelable) {
+              <span class="cancelable">Can be cancelled</span>
+            }
+          </div>
+        }
+      }
+
+      <!-- Saved Searches -->
+      @if (savedSearches(); as searches) {
+        <h3>Saved Searches ({{ searches.length }})</h3>
+        @for (item of searches; track item.title) {
+          <div class="saved-search">
+            <strong>{{ item.title }}</strong>
+            <span class="date">{{ item.date }}</span>
+          </div>
+        }
+      }
+
+      <!-- Institution selector -->
+      @if (institutions(); as insts) {
+        @if (insts.length > 1) {
+          <h3>Switch Institution</h3>
+          @for (inst of insts; track inst.value.institutionCode) {
+            <button (click)="onSelectInstitution(inst)">
+              {{ inst.label }}
+            </button>
+          }
+        }
+      }
+    </div>
+  `
+})
+export class AccountDashboardComponent {
+  loansCounter    = this.account.loansCounterSignal();
+  requestsCounter = this.account.requestsCounterSignal();
+  finesCounter    = this.account.finesCounterSignal();
+  loansList       = this.account.loansListSignal();
+  requestsList    = this.account.requestsListSignal();
+  savedSearches   = this.account.savedSearchesListSignal();
+  institutions    = this.account.institutionsListSignal();
+
+  constructor(private account: AccountStateService) {}
+
+  isOverdue(loan: LoanItem): boolean {
+    return loan.loanstatus === 'OVERDUE' || loan.alerts?.length > 0;
+  }
+
+  onSelectInstitution(inst: any): void {
+    // Account service is read-only — institution switching is handled
+    // by the host. Use the Actions + ofType pattern to listen for
+    // institution change events if needed.
+    console.log('Selected institution:', inst.value.institutionCode);
+  }
+}
+```
+
+## Using Analytics Constants
+
+Consistent event and page-name tracking across remotes using the shared analytics const maps.
+
+```typescript
+import { Injectable } from '@angular/core';
+import { EventsNames, PageNames, SearchTypes } from '@libis/primo-shared-state';
+
+@Injectable({ providedIn: 'root' })
+export class AnalyticsService {
+  trackEvent(eventName: string, data: Record<string, any>): void {
+    // Send to your analytics backend
+    console.log('Analytics event:', eventName, data);
+  }
+
+  trackSearchExecuted(query: string, scope: string): void {
+    this.trackEvent(EventsNames.SearchExecuted, {
+      query,
+      scope,
+      searchType: SearchTypes.Simple,
+    });
+  }
+
+  trackPageView(pageName: string): void {
+    this.trackEvent('pageView', {
+      page: pageName,
+    });
+  }
+
+  // Example: track when user views full display
+  trackFullDisplayView(recordId: string): void {
+    this.trackEvent(EventsNames.FullDisplayView, {
+      page: PageNames.FullDisplay,
+      recordId,
+    });
+  }
+}
+```
+
+## Filter Dispatch Helpers
+
+Using the new filter dispatch helpers added in v2026.3.1.
+
+```typescript
+import { Component } from '@angular/core';
+import {
+  FilterStateService,
+  SearchStateService,
+  FilterGroupValue,
+} from '@libis/primo-shared-state';
+
+@Component({
+  selector: 'app-custom-filters',
+  template: `
+    <div class="custom-filters">
+      <!-- Quick filter buttons -->
+      <button (click)="showOnlyBooks()">Books Only</button>
+      <button (click)="excludeNewspapers()">Exclude Newspapers</button>
+      <button (click)="applyMultipleAuthors()">Filter by Authors</button>
+      <button (click)="clearFilters()">Clear All</button>
+
+      <!-- Filter panel toggle -->
+      <button (click)="toggleFilterPanel()">
+        {{ isFiltersOpen() ? 'Hide' : 'Show' }} Filters
+      </button>
+
+      <!-- Remember filters toggle -->
+      <label>
+        <input type="checkbox"
+               [checked]="isRememberAll()"
+               (change)="toggleRememberAll($event)" />
+        Remember filters across searches
+      </label>
+
+      <!-- Expand My Results toggle -->
+      <label>
+        <input type="checkbox"
+               [checked]="expandMyResults()"
+               (change)="toggleExpandResults($event)" />
+        Expand My Results
+      </label>
+    </div>
+  `
+})
+export class CustomFiltersComponent {
+  isFiltersOpen  = this.filter.isFiltersOpenSignal();
+  isRememberAll  = this.filter.isRememberAllSignal();
+  expandMyResults = this.search.pcAvailabilityToggleValueSignal();
+
+  constructor(
+    private filter: FilterStateService,
+    private search: SearchStateService,
+  ) {}
+
+  showOnlyBooks(): void {
+    this.filter.selectResourceType({ resourceType: 'books', count: 0 });
+  }
+
+  excludeNewspapers(): void {
+    this.filter.excludeFilter('rtype', 'newspapers');
+  }
+
+  applyMultipleAuthors(): void {
+    const filters: FilterGroupValue[] = [
+      { filterGroup: 'creator', filterValue: 'Smith, John' },
+      { filterGroup: 'creator', filterValue: 'Doe, Jane' },
+    ];
+    this.filter.applyMultiSelectFilters(filters);
+  }
+
+  async clearFilters(): Promise<void> {
+    const params = await this.search.getSearchParams();
+    if (params) {
+      this.filter.clearAllFilters(params);
+    }
+  }
+
+  toggleFilterPanel(): void {
+    this.filter.setFiltersOpen(!this.isFiltersOpen());
+  }
+
+  toggleRememberAll(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.filter.setRememberAll(checked);
+  }
+
+  toggleExpandResults(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.search.toggleExpandMyResults(checked);
+  }
+}
+```
+
+## Combining View Config with Search
+
+Adapt remote behaviour based on institutional configuration.
+
+```typescript
+import { Component, OnInit } from '@angular/core';
+import { combineLatest } from 'rxjs';
+import { filter, map } from 'rxjs/operators';
+import {
+  ViewConfigStateService,
+  SearchStateService,
+  AccountStateService,
+  UserStateService,
+} from '@libis/primo-shared-state';
+
+@Component({
+  selector: 'app-smart-dashboard',
+  template: `
+    @if (dashboardData$ | async; as data) {
+      <h2>{{ data.institutionName }} — {{ data.vid }}</h2>
+
+      @if (data.isLoggedIn) {
+        <div class="patron-summary">
+          <p>Welcome, {{ data.userName }}!</p>
+          @if (data.loansCount) {
+            <p>You have {{ data.loansCount }} active loan(s)</p>
+          }
+          @if (data.finesCount) {
+            <p class="alert">{{ data.finesCount }} outstanding fine(s)</p>
+          }
+        </div>
+      }
+
+      <div class="search-summary">
+        <p>{{ data.totalResults }} results for "{{ data.searchQuery }}"</p>
+        <p>Scopes available: {{ data.scopeNames.join(', ') }}</p>
+      </div>
+    }
+  `
+})
+export class SmartDashboardComponent implements OnInit {
+  dashboardData$ = combineLatest([
+    this.viewConfig.selectVid$(),
+    this.viewConfig.selectInstitutionName$(),
+    this.viewConfig.selectScopes$(),
+    this.user.selectIsLoggedIn$(),
+    this.user.selectUserName$(),
+    this.search.selectTotalResults$(),
+    this.search.selectSearchParams$(),
+    this.account.selectLoansCounter$(),
+    this.account.selectFinesCounter$(),
+  ]).pipe(
+    map(([vid, instName, scopes, loggedIn, userName, total, params, loans, fines]) => ({
+      vid: vid ?? 'unknown',
+      institutionName: instName ?? 'Unknown Institution',
+      scopeNames: (scopes ?? []).map(s => s.scopeDisplayName),
+      isLoggedIn: loggedIn,
+      userName: userName ?? 'Guest',
+      totalResults: total,
+      searchQuery: params?.q ?? '',
+      loansCount: loans,
+      finesCount: fines,
+    }))
+  );
+
+  constructor(
+    private viewConfig: ViewConfigStateService,
+    private search: SearchStateService,
+    private account: AccountStateService,
+    private user: UserStateService,
+  ) {}
+
+  ngOnInit() {}
+}
+```

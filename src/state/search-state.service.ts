@@ -12,6 +12,12 @@ import {
   setSearchNotificationMsg,
   sortByChangedAction,
   updateIsSavedSearch,
+  setDisplaySummaryAction,
+  setIsSnackBarOpenAction,
+  setIsReportAProblemOpenAction,
+  saveCurrentSearchTermAction,
+  pcAvailabilityToggleChanged,
+  searchInFullTextToggleChanged,
 } from '../actions/shared-actions';
 
 /**
@@ -88,6 +94,38 @@ export class SearchStateService {
     return this.helper.select$((state: any) => state.Search?.status === 'loading');
   }
 
+  selectSearchNotificationMsg$(): Observable<string> {
+    return this.helper.select$((state: any) => state.Search?.searchNotificationMsg || '');
+  }
+
+  selectPcAvailabilityToggleValue$(): Observable<boolean> {
+    return this.helper.select$((state: any) => state.Search?.pcAvailabilityToggleValue || false);
+  }
+
+  selectSearchInFullTextToggleValue$(): Observable<boolean> {
+    return this.helper.select$((state: any) => state.Search?.searchInFullTextToggleValue || false);
+  }
+
+  selectIsSnackBarOpen$(): Observable<boolean> {
+    return this.helper.select$((state: any) => state.Search?.isSnackBarOpen || false);
+  }
+
+  selectDisplaySummary$(): Observable<boolean> {
+    return this.helper.select$((state: any) => state.Search?.displaySummary || false);
+  }
+
+  selectIsReportAProblemOpen$(): Observable<boolean> {
+    return this.helper.select$((state: any) => state.Search?.isReportAProblemOpen || false);
+  }
+
+  selectCurrentSearchTerm$(): Observable<string | undefined> {
+    return this.helper.select$((state: any) => state.Search?.currentSearchTerm);
+  }
+
+  selectSelectedSortBy$(): Observable<string | null> {
+    return this.helper.select$((state: any) => state.Search?.selectedSortBy || null);
+  }
+
   /**
    * Get all documents once (snapshot)
    */
@@ -155,6 +193,38 @@ export class SearchStateService {
     return this.helper.selectSignal((state: any) => state.Search?.status === 'loading', false);
   }
 
+  searchNotificationMsgSignal(): Signal<string> {
+    return this.helper.selectSignal((state: any) => state.Search?.searchNotificationMsg || '', '');
+  }
+
+  pcAvailabilityToggleValueSignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: any) => state.Search?.pcAvailabilityToggleValue || false, false);
+  }
+
+  searchInFullTextToggleValueSignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: any) => state.Search?.searchInFullTextToggleValue || false, false);
+  }
+
+  isSnackBarOpenSignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: any) => state.Search?.isSnackBarOpen || false, false);
+  }
+
+  displaySummarySignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: any) => state.Search?.displaySummary || false, false);
+  }
+
+  isReportAProblemOpenSignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: any) => state.Search?.isReportAProblemOpen || false, false);
+  }
+
+  currentSearchTermSignal(): Signal<string | undefined> {
+    return this.helper.selectSignal((state: any) => state.Search?.currentSearchTerm, undefined);
+  }
+
+  selectedSortBySignal(): Signal<string | null> {
+    return this.helper.selectSignal((state: any) => state.Search?.selectedSortBy || null, null);
+  }
+
   // ── Typed dispatch helpers ──────────────────────────────────────────────────
 
   search(searchParams: SearchParams, searchType?: string): void {
@@ -183,5 +253,29 @@ export class SearchStateService {
 
   setSearchNotificationMessage(msg: string): void {
     this.helper.dispatch(setSearchNotificationMsg({ msg }));
+  }
+
+  setDisplaySummary(displaySummary: boolean): void {
+    this.helper.dispatch(setDisplaySummaryAction({ displaySummary }));
+  }
+
+  setIsSnackBarOpen(isSnackBarOpen: boolean): void {
+    this.helper.dispatch(setIsSnackBarOpenAction({ isSnackBarOpen }));
+  }
+
+  setIsReportAProblemOpen(isReportAProblemOpen: boolean): void {
+    this.helper.dispatch(setIsReportAProblemOpenAction({ isReportAProblemOpen }));
+  }
+
+  toggleExpandMyResults(pcAvailabilityToggleValue: boolean): void {
+    this.helper.dispatch(pcAvailabilityToggleChanged({ pcAvailabilityToggleValue }));
+  }
+
+  toggleSearchInFullText(searchInFullTextToggleValue: boolean): void {
+    this.helper.dispatch(searchInFullTextToggleChanged({ searchInFullTextToggleValue }));
+  }
+
+  saveCurrentSearchTerm(searchTerm: string): void {
+    this.helper.dispatch(saveCurrentSearchTermAction({ searchTerm }));
   }
 }

@@ -7,6 +7,14 @@ import { SearchParams } from '../models/search.model';
 import {
   loadFiltersAction,
   updateSortByParam as updateSortByParamAction,
+  IncludeFilterButtonClickedAction,
+  ExcludeFilterButtonClickedAction,
+  applyMultiSelectFiltersAction,
+  clearAllFiltersAction,
+  resourceTypeFilterSelectedAction,
+  setIsFiltersOpenAction,
+  rememberAllChangeValueAction,
+  FilterGroupValue,
 } from '../actions/shared-actions';
 
 /**
@@ -139,5 +147,33 @@ export class FilterStateService {
 
   updateSortByParam(sort: string): void {
     this.helper.dispatch(updateSortByParamAction({ sort }));
+  }
+
+  includeFilter(filterGroup: string, filterValue: string, mergedLabels: string[] = []): void {
+    this.helper.dispatch(IncludeFilterButtonClickedAction({ filterGroup, filterValue, mergedLabels }));
+  }
+
+  excludeFilter(filterGroup: string, filterValue: string, mergedLabels: string[] = []): void {
+    this.helper.dispatch(ExcludeFilterButtonClickedAction({ filterGroup, filterValue, mergedLabels }));
+  }
+
+  applyMultiSelectFilters(multiSelectedFilters: FilterGroupValue[]): void {
+    this.helper.dispatch(applyMultiSelectFiltersAction({ multiSelectedFilters }));
+  }
+
+  clearAllFilters(searchParams?: SearchParams): void {
+    this.helper.dispatch(clearAllFiltersAction({ searchParams }));
+  }
+
+  selectResourceType(selectedResourceType: ResourceTypeFilterModel): void {
+    this.helper.dispatch(resourceTypeFilterSelectedAction({ selectedResourceType }));
+  }
+
+  setFiltersOpen(isFiltersOpen: boolean): void {
+    this.helper.dispatch(setIsFiltersOpenAction({ isFiltersOpen }));
+  }
+
+  setRememberAll(newValue: boolean): void {
+    this.helper.dispatch(rememberAllChangeValueAction({ newValue }));
   }
 }

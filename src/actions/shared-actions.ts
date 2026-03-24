@@ -17,139 +17,281 @@
  *
  * Do NOT register EffectsModule.forFeature([]) with effects that re-implement
  * the host's HTTP calls.
+ *
+ * ACTIONS INTENTIONALLY NOT EXPORTED (unsafe for remote dispatch):
+ * - All [Account] Start * actions — trigger HTTP calls to ILS
+ * - loadJwtAction — initiates OAuth/authentication flow
+ * - loadViewConfigAction — triggers HTTP to load institutional config
+ * - deliveryAction — triggers HTTP for delivery data
+ * - FavoriteActions.addFavorite / deleteFavorite — trigger HTTP effects
+ * - searchAndAppendAction — triggers HTTP for endless scroll
+ * - All "done*" account actions that feed downstream effects
  */
 
 import { createAction, props } from '@ngrx/store';
 import { Doc, Facet, SearchData, SearchParams } from '../models/search.model';
 import { DecodedJwt, UserSettings } from '../models/user.model';
 import { LogoutReason } from '../models/state.const';
+import { ResourceTypeFilterModel } from '../models/filter.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Search actions
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** SAFE: Command that starts a well-defined host search operation. The remote legitimately supplies the search parameters. */
 export const searchAction = createAction(
   '[Search] Load search',
   props<{ searchParams: SearchParams; searchType?: string }>()
 );
 
+/**
+ * SAFE (with caveat): Terminal success action whose reducer writes search results to the store.
+ * ⚠️ NOTE: The host's delivery effect listens to this action downstream.
+ * Dispatching it from a remote with fabricated data could cause inconsistent delivery state.
+ * Prefer reading search results via SearchStateService selectors instead of dispatching this.
+ */
 export const searchSuccessAction = createAction(
   '[Search] Load search success',
   props<{ searchResultsData: SearchData }>()
 );
 
+/** SAFE: Terminal failure action. Reducer sets status to FAIL. No downstream effects. */
 export const searchFailedAction = createAction('[Search] Load search failed');
 
+/** SAFE: Pure state reset — clears all search results and resets to initial state. */
 export const clearSearchAction = createAction('[Search] clear search');
 
+/** SAFE: Pure UI-state write — updates the selected page size. */
 export const pageLimitChangedAction = createAction(
   '[Search] Page Limit Changed',
   props<{ limit: number }>()
 );
 
+/** SAFE: Pure UI-state write — updates the current page number for pagination. */
 export const pageNumberChangedAction = createAction(
   '[Search] Page Number Changed',
   props<{ pageNumber: number }>()
 );
 
-/** NOTE: action type is lowercase [search], not [Search] — match exactly */
+/** SAFE: Pure UI-state write — updates sort selection. NOTE: type is lowercase [search]. */
 export const sortByChangedAction = createAction(
   '[search] Sort By Changed',
   props<{ sort: string }>()
 );
 
+/** SAFE: Command to fetch unpaywall links for given records. Remote supplies records it has. */
 export const fetchUnpaywallLinksAction = createAction(
   '[Search] Fetch unpaywall links',
   props<{ recordsToUpdate: Doc[] }>()
 );
 
+/** SAFE: Pure UI-state write — marks current search as saved. */
 export const updateIsSavedSearch = createAction(
   '[Search] Update Is Saved Search',
   props<{ isSavedSearch: boolean }>()
 );
 
-/** NOTE: action type is lowercase [search], not [Search] — match exactly */
+/** SAFE: Pure UI-state write — sets the search notification message. NOTE: lowercase [search]. */
 export const setSearchNotificationMsg = createAction(
   '[search] Set Search Notification Message',
   props<{ msg: string }>()
 );
 
+/** SAFE: Pure UI-state write — saves the current search term for history tracking. */
 export const saveCurrentSearchTermAction = createAction(
   '[Search] save current search term',
   props<{ searchTerm: string }>()
 );
 
+/** SAFE: Pure UI-state write — updates the sort-by parameter in filter state. */
 export const updateSortByParam = createAction(
   '[Filter] Update Sort By Param',
   props<{ sort: string }>()
+);
+
+/** SAFE: Pure UI toggle — controls the display summary flag. No HTTP side-effects. */
+export const setDisplaySummaryAction = createAction(
+  '[Search] Set Display Summary',
+  props<{ displaySummary: boolean }>()
+);
+
+/** SAFE: Pure UI toggle — controls snack bar visibility. NOTE: lowercase [search], trailing space in type string. */
+export const setIsSnackBarOpenAction = createAction(
+  '[search] Set Is SnackBar Open ',
+  props<{ isSnackBarOpen: boolean }>()
+);
+
+/** SAFE: Pure UI toggle — controls Report a Problem panel. NOTE: lowercase [search], trailing space in type string. */
+export const setIsReportAProblemOpenAction = createAction(
+  '[search] Set Is Report A Problem Open ',
+  props<{ isReportAProblemOpen: boolean }>()
+);
+
+/** SAFE: Pure UI toggle — controls search notification presentation. NOTE: lowercase [search], trailing space. */
+export const setPresentNotificationAction = createAction(
+  '[search] Set Present Notification ',
+  props<{ presentNotification: boolean }>()
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Filter / search-filter actions
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** SAFE: Command to load filters for given search params. The host effect performs the HTTP call. */
 export const loadFiltersAction = createAction(
   '[Filter] Load Filter',
   props<{ searchParams: SearchParams }>()
 );
 
+/** SAFE: Terminal success action — reducer stores filters. No downstream effect listens. */
 export const filtersSuccessAction = createAction(
   '[Filter] Load Filter Success',
   props<{ filters: Facet[] }>()
 );
 
+/** SAFE: Terminal failure action — reducer sets filter status to FAIL. */
 export const filterFailedAction = createAction('[Filter] Load Filter Failed');
+
+/** SAFE: Command to apply an include filter. Remote legitimately supplies filter group and value. */
+export const IncludeFilterButtonClickedAction = createAction(
+  '[Filter Side Bar] Add Include Filter Clicked',
+  props<{ filterGroup: string; filterValue: string; mergedLabels: string[] }>()
+);
+
+/** SAFE: Command to apply an exclude filter. Remote legitimately supplies filter group and value. */
+export const ExcludeFilterButtonClickedAction = createAction(
+  '[Filter Side Bar] Add Exclude Filter Clicked',
+  props<{ filterGroup: string; filterValue: string; mergedLabels: string[] }>()
+);
+
+/**
+ * SAFE: Command to apply multi-select filters.
+ * FilterGroupValue shape: { filterGroup: string; filterValue: string }.
+ */
+export const applyMultiSelectFiltersAction = createAction(
+  '[Filter Side Bar] Apply Multi-select Filters',
+  props<{ multiSelectedFilters: FilterGroupValue[] }>()
+);
+
+/** FilterGroupValue — represents a single filter selection within a group. */
+export interface FilterGroupValue {
+  filterGroup: string;
+  filterValue: string;
+}
+
+/** SAFE: Pure UI reset — clears all active filters and optionally triggers new search. */
+export const clearAllFiltersAction = createAction(
+  '[Filters] Clear All Filter',
+  props<{ searchParams?: SearchParams }>()
+);
+
+/** SAFE: Pure UI filter selection — selects a resource type filter. */
+export const resourceTypeFilterSelectedAction = createAction(
+  '[Resource Type Filter Bar] Resource Type Filter Bar Selected',
+  props<{ selectedResourceType: ResourceTypeFilterModel }>()
+);
+
+/** SAFE: Pure UI toggle — controls whether the filter side bar is open. */
+export const setIsFiltersOpenAction = createAction(
+  '[Filter Side Bar] Set Is Filters Open',
+  props<{ isFiltersOpen: boolean }>()
+);
+
+/** SAFE: Pure UI toggle — controls filter persistence across searches (Remember All). */
+export const rememberAllChangeValueAction = createAction(
+  '[Filter Side Bar] Remember All button change value',
+  props<{ newValue: boolean }>()
+);
+
+/** SAFE: Command — toggles PC availability (Expand My Results) and triggers a new search. */
+export const pcAvailabilityToggleChanged = createAction(
+  '[Filter Side Bar] Expand My Results toggle pressed',
+  props<{ pcAvailabilityToggleValue: boolean }>()
+);
+
+/** SAFE: Pure UI-state write — sets the PC availability toggle value without triggering search. */
+export const changePcAvailabilityToggleValue = createAction(
+  '[Filter Side Bar] Expand My Results value changed',
+  props<{ pcAvailabilityToggleValue: boolean }>()
+);
+
+/** SAFE: Command — toggles full-text search and triggers a new search. */
+export const searchInFullTextToggleChanged = createAction(
+  '[Filter Side Bar] Search In Full Text toggle pressed',
+  props<{ searchInFullTextToggleValue: boolean }>()
+);
+
+/** SAFE: Pure UI-state write — sets the full-text toggle value without triggering search. */
+export const changeSearchInFullTextToggleValue = createAction(
+  '[Filter Side Bar] Search In Full Text value changed',
+  props<{ searchInFullTextToggleValue: boolean }>()
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // User actions — only those safe for remote modules to dispatch
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** SAFE: Pure state write — sets the decoded JWT in user state. No downstream effects. */
 export const setDecodedJwt = createAction(
   '[User] Set Decoded Jwt',
   props<{ decodedJwt: DecodedJwt }>()
 );
 
+/**
+ * SAFE (with caveat): Terminal success action whose reducer stores user settings.
+ * ⚠️ NOTE: A host effect listens downstream to sync preferred language.
+ * Only dispatch with legitimate user settings data.
+ */
 export const loadUserSettingsSuccessAction = createAction(
   '[User-Settings] save user settings',
   props<{ userSettings: UserSettings; isNewSession: boolean }>()
 );
 
+/** SAFE: Pure state reset — clears user settings to default. */
 export const resetUserSettingsSuccessAction = createAction(
   '[User-Settings] reset user settings success'
 );
 
+/** SAFE: Terminal success action — stores the updated language preference. */
 export const doneChangeUserSettingsLanguageAction = createAction(
   '[User-Settings] Done Change User Settings Language',
   props<{ value: string }>()
 );
 
+/** SAFE: Terminal success action — stores save-history toggle value. NOTE: trailing space in type string. */
 export const doneSaveHistoryToggleAction = createAction(
   '[User-Settings] Done Update Save history toggle ',
   props<{ value: string }>()
 );
 
+/** SAFE: Terminal success action — stores use-history toggle value. NOTE: trailing space in type string. */
 export const doneUseHistoryToggleAction = createAction(
   '[User-Settings] Done Update Use history toggle ',
   props<{ value: string }>()
 );
 
+/** SAFE: Terminal success action — stores auto-extend session toggle. NOTE: trailing space in type string. */
 export const doneAutoExtendMySessionToggleAction = createAction(
   '[User-Settings] Done Update Auto Extend My Session toggle ',
   props<{ value: string }>()
 );
 
+/** SAFE: Pure state write — records where the user was before login for redirect. */
 export const setLoginFromStateAction = createAction(
   '[User-Settings] set login from state',
   props<{ value: string }>()
 );
 
+/** SAFE: Terminal success action — stores RA search history toggle value. */
 export const changeRaSaveSearchDoneAction = createAction(
   '[User-settings] dont update research-Assistant save search toggle',
   props<{ value: string }>()
 );
 
+/** SAFE: Pure state reset — clears the logout reason flag. */
 export const resetLogoutReason = createAction('[User-Settings] reset logout reason');
 
+/** SAFE: Command to reset the JWT and log out. Remote may legitimately trigger logout. */
 export const resetJwtAction = createAction(
   '[User] reset jwt',
   props<{ logoutReason: LogoutReason; url?: string }>()
