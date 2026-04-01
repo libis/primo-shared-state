@@ -113,7 +113,7 @@ cp libis-primo-shared-state-2026.3.1.tgz path/to/NDE_customModule/nde/
 ### Step 3 — install in the remote project
 
 ```bash
-cd path/to/NDE_customModule_LIBISstyle
+cd path/to/NDE_customModule
 npm install
 ```
 
