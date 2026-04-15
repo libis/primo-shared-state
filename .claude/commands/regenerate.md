@@ -97,6 +97,32 @@ These files from the decompiled source (`app/models/`) define the interfaces to 
 
 ---
 
+## State service API symmetry
+
+Every public state-service selector must expose **all three variants** — Observable, Signal, and Promise — unless the underlying selector takes a runtime argument that makes one variant impractical (documented as an exception in the service file).
+
+For a selector over a field `foo`, the three forms are:
+
+| Shape | Name pattern | Returns | Uses |
+|-------|--------------|---------|------|
+| Observable | `selectFoo$()` / `selectIsFoo$()` | `Observable<T>` | `helper.select$(...)` |
+| Signal | `fooSignal()` / `isFooSignal()` | `Signal<T>` | `helper.selectSignal(..., defaultValue)` |
+| Promise | `getFoo()` / `isFoo()` | `Promise<T>` (snapshot) | `helper.selectOnce(...)` |
+
+### Rules
+
+- ✅ **Symmetric coverage** — when you add or update a selector, generate all three variants in the same pass. Missing variants are treated as bugs, not omissions.
+- ✅ **Consistent naming** — Observables end with `$`, Signals end with `Signal`, Promises use `get…` (or `is…` for boolean snapshots). Keep the same stem across all three forms so remotes can jump between them mechanically.
+- ✅ **Parameterised selectors** — when a selector requires a runtime argument (e.g. `docByIdSignal(id: string)`), generate whichever of the three variants makes sense for the call-site and add a JSDoc note explaining any intentionally-missing variants.
+- ✅ **Read-only services too** — the symmetry rule applies to selector-based services with no dispatch (e.g. `ViewConfigStateService`, `EntityStateService`, `AccountStateService`). Dispatch helpers are orthogonal and are only added for services that own writable slices.
+- ❌ **Do not drop a variant because "nobody uses it yet"** — the package ships all three so remotes can pick whichever fits their call site without touching this package.
+
+### Audit during updates
+
+In **Scenario B**, after applying additions/changes to `src/state/*.ts`, re-read each service file and list every selector with fewer than three public variants. Fill the gaps in the same pass — these additions go under the new version's `### Added` section in `CHANGES.md` (group them under an "API symmetry" bullet). They are **not** breaking changes.
+
+---
+
 ## Documentation verification — README.md and EXAMPLES.md
 
 The package ships with two user-facing documentation files that must stay in lock-step with the regenerated `src/`:
@@ -137,7 +163,7 @@ Add a `### Documentation` subsection to the new version entry listing doc-only c
 2. Generate the full package:
    - `src/models/` — TypeScript interfaces for every relevant state shape. Include read-only model interfaces per the **read-only model access** rules above.
    - `src/actions/shared-actions.ts` — apply the safety rules above.
-   - `src/state/` — one service per state slice (`UserStateService`, `SearchStateService`, `FilterStateService`, `ViewConfigStateService`, `EntityStateService`) each with Observable, Promise, Signal, and typed dispatch APIs. Services for read-only slices expose only selectors (no `dispatch()`).
+   - `src/state/` — one service per state slice (`UserStateService`, `SearchStateService`, `FilterStateService`, `ViewConfigStateService`, `EntityStateService`, `AccountStateService`). Every selector must be exposed in all three forms (Observable `selectFoo$()`, Signal `fooSignal()`, Promise `getFoo()` / `isFoo()`) per the **State service API symmetry** rules above. Services for read-only slices expose only selectors (no `dispatch()`); services that own writable slices additionally expose typed dispatch helpers.
    - `src/utils/StateHelper` — thin `Store` wrapper used internally by the services.
    - `src/index.ts` — barrel export for all public symbols.
    - `README.md` and `EXAMPLES.md` — generated to match the full API surface per the **Documentation verification** rules above.

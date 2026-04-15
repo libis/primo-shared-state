@@ -95,6 +95,22 @@ export class EntityStateService {
     return this.helper.selectOnce((state: any) => state['linked-data-entity']?.relatedEntities);
   }
 
+  async getWikiData(): Promise<EntityWikiData | undefined> {
+    return this.helper.selectOnce((state: any) => state['linked-data-entity']?.wikiData);
+  }
+
+  async getWikiDataStatus(): Promise<LoadingStatus | undefined> {
+    return this.helper.selectOnce((state: any) => state['linked-data-entity']?.wikiDataStatus);
+  }
+
+  async getRelatedDocsStatus(): Promise<LoadingStatus | undefined> {
+    return this.helper.selectOnce((state: any) => state['linked-data-entity']?.relatedDocsStatus);
+  }
+
+  async getRelatedEntitiesStatus(): Promise<LoadingStatus | undefined> {
+    return this.helper.selectOnce((state: any) => state['linked-data-entity']?.relatedEntitiesStatus);
+  }
+
   // ── Signal API ────────────────────────────────────────────────────────────
 
   entityIdSignal(): Signal<string | undefined> {
@@ -119,5 +135,17 @@ export class EntityStateService {
 
   relatedEntitiesSignal(): Signal<RelatedEntitiesMultiLangDataList[] | undefined> {
     return this.helper.selectSignal((state: any) => state['linked-data-entity']?.relatedEntities, undefined);
+  }
+
+  wikiDataStatusSignal(): Signal<LoadingStatus | undefined> {
+    return this.helper.selectSignal((state: any) => state['linked-data-entity']?.wikiDataStatus, undefined);
+  }
+
+  relatedDocsStatusSignal(): Signal<LoadingStatus | undefined> {
+    return this.helper.selectSignal((state: any) => state['linked-data-entity']?.relatedDocsStatus, undefined);
+  }
+
+  relatedEntitiesStatusSignal(): Signal<LoadingStatus | undefined> {
+    return this.helper.selectSignal((state: any) => state['linked-data-entity']?.relatedEntitiesStatus, undefined);
   }
 }

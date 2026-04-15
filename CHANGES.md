@@ -20,6 +20,13 @@
 - **New filter actions:** `removeIncludeFilterAction` (`[Filter Group Dropdown] Remove Include Filter`), `removeExcludeFilterAction` (`[Filter Group Dropdown] Remove Exclude Filter`)
 - **New search UI action:** `setIsResourceRecommenderExpandedAction` (`[search] Set Is Resource Recommender Expanded ` — trailing space)
 - **`EntityStateService` — new flat-field selectors:** `selectEntityId$`, `selectEntity$`, `selectWikiData$`, `selectWikiDataStatus$`, `selectRelatedDocsStatus$`, `selectRelatedEntitiesStatus$` plus Signal and Promise equivalents where applicable
+- **API symmetry — every selector now has all three variants (Observable / Signal / Promise).** Added missing Signals and Promises across every state service so remotes can pick the shape that fits the call site:
+  - `UserStateService`: `getUserState`, `getDecodedJwt`, `getUserName`, `getUserGroup`
+  - `SearchStateService`: `docByIdSignal(id)` + Promises `getSearchMetaData`, `getSearchStatus`, `getTotalResults`, `getPageSize`, `isLoading`, `getSearchNotificationMsg`, `getPcAvailabilityToggleValue`, `getSearchInFullTextToggleValue`, `isSnackBarOpen`, `getDisplaySummary`, `isReportAProblemOpen`, `getCurrentSearchTerm`, `getSelectedSortBy`
+  - `FilterStateService`: Promises `getFilterState`, `getResourceTypeFilter`, `isFiltersOpen`, `isRememberAll`
+  - `ViewConfigStateService`: Signals `primoViewSignal`, `tilesSignal`, `institutionNameSignal` + Promises `getStatus`, `getPrimoView`, `getScopes`, `getTabs`, `getTiles`, `getNdeAddons`, `getInstitutionName`, `getInterfaceLanguage`
+  - `EntityStateService`: Signals `wikiDataStatusSignal`, `relatedDocsStatusSignal`, `relatedEntitiesStatusSignal` + Promises `getWikiData`, `getWikiDataStatus`, `getRelatedDocsStatus`, `getRelatedEntitiesStatus`
+  - `AccountStateService`: Signals `loansStatusSignal`, `requestsStatusSignal`, `finesStatusSignal` + Promises `getBlocksCounter`, `getFavoritesCounter`, `getLoansList`, `getRequestsList`, `getFinesList`, `getSearchHistoryList`, `getInstitutionsList`, `getLoansStatus`, `getRequestsStatus`, `getFinesStatus`
 
 ### Changed
 
@@ -37,6 +44,7 @@
 
 - **README.md:** `EntityStateService` tables rewritten to reflect the new flat API; stale `entityViewModel` fields removed from `Quick start` snippets; SearchParams table updated with 4 new fields; Doc table shows `linkunpaywall` rename and removal of `unpaywallStatus`; Control table updated with `originatingSystem`/`originatingSystemId`; DecodedJwt updated with `selfRegistered`/`restrictedUser`; new `ControlledVocabulary`, `EsploroResearchFile`, `EsploroResearchLink`, `SearchWithinJournal` interfaces documented; ViewConfigData / SystemConfiguration additions documented; `EntityViewModel` / `BasicEntityData` / `EntityDetails` / `RelatedDocList` / `RelatedEntitiesMultiLangDataList` tables corrected to match the actual source shapes (previous entries had fabricated field names); Filter and Search UI actions tables updated with the three new actions; install-command version strings bumped to `2026.4.1`.
 - **EXAMPLES.md:** Entity card example rewritten to use the new flat API and multi-language `EntityMultiLangData` shape, showing how to pick a language via `ViewConfigService.interfaceLanguageSignal()`.
+- **README.md — API reference tables** for every `*StateService` updated to list the new Signal and Promise methods added by the symmetry pass.
 
 ## 2026.3.1 — 2026-03-24
 

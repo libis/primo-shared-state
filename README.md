@@ -740,9 +740,13 @@ constructor() {
 #### Snapshots
 | Method | Returns |
 |---|---|
+| `getUserState()` | `Promise<UserState>` |
 | `getJwt()` | `Promise<string \| undefined>` |
+| `getDecodedJwt()` | `Promise<DecodedJwt \| undefined>` |
 | `isLoggedIn()` | `Promise<boolean>` |
 | `getUserSettings()` | `Promise<UserSettings \| undefined>` |
+| `getUserName()` | `Promise<string \| undefined>` |
+| `getUserGroup()` | `Promise<string>` |
 
 #### Dispatch helpers
 `setDecodedJwt(jwt)` · `setLoginFromState(v)` · `resetLogoutReason()` · `setLanguage(v)` · `setSaveHistory(v)` · `setUseHistory(v)` · `setAutoExtendMySession(v)` · `setAllowSavingRaSearchHistory(v)` · `dispatch(action)`
@@ -775,6 +779,7 @@ constructor() {
 | Method | Returns | Initial value |
 |---|---|---|
 | `allDocsSignal()` | `Signal<Doc[]>` | `[]` |
+| `docByIdSignal(id)` | `Signal<Doc \| undefined>` | `undefined` |
 | `searchParamsSignal()` | `Signal<SearchParams \| null>` | `null` |
 | `searchMetaDataSignal()` | `Signal<SearchMetaData \| null>` | `null` |
 | `searchStatusSignal()` | `Signal<LoadingStatus>` | `'pending'` |
@@ -796,6 +801,19 @@ constructor() {
 | `getAllDocs()` | `Promise<Doc[]>` |
 | `getDocById(id)` | `Promise<Doc \| undefined>` |
 | `getSearchParams()` | `Promise<SearchParams \| null>` |
+| `getSearchMetaData()` | `Promise<SearchMetaData \| null>` |
+| `getSearchStatus()` | `Promise<LoadingStatus>` |
+| `getTotalResults()` | `Promise<number>` |
+| `getPageSize()` | `Promise<number \| null>` |
+| `isLoading()` | `Promise<boolean>` |
+| `getSearchNotificationMsg()` | `Promise<string>` |
+| `getPcAvailabilityToggleValue()` | `Promise<boolean>` |
+| `getSearchInFullTextToggleValue()` | `Promise<boolean>` |
+| `isSnackBarOpen()` | `Promise<boolean>` |
+| `getDisplaySummary()` | `Promise<boolean>` |
+| `isReportAProblemOpen()` | `Promise<boolean>` |
+| `getCurrentSearchTerm()` | `Promise<string \| undefined>` |
+| `getSelectedSortBy()` | `Promise<string \| null>` |
 
 #### Dispatch helpers
 `search(params, type?)` · `clearSearch()` · `setPageLimit(n)` · `setPageNumber(n)` · `setSortBy(s)` · `setIsSavedSearch(b)` · `setSearchNotificationMessage(s)` · `saveCurrentSearchTerm(s)` · `setDisplaySummary(b)` · `setIsSnackBarOpen(b)` · `setIsReportAProblemOpen(b)` · `toggleExpandMyResults(b)` · `toggleSearchInFullText(b)` · `dispatch(action)`
@@ -829,9 +847,13 @@ constructor() {
 #### Snapshots
 | Method | Returns |
 |---|---|
+| `getFilterState()` | `Promise<FilterState>` |
 | `getIncludedFilters()` | `Promise<selectedFilters[] \| null>` |
 | `getExcludedFilters()` | `Promise<selectedFilters[] \| null>` |
 | `getMultiSelectedFilters()` | `Promise<MultiSelectedFilter[] \| null>` |
+| `getResourceTypeFilter()` | `Promise<ResourceTypeFilterModel \| null>` |
+| `isFiltersOpen()` | `Promise<boolean>` |
+| `isRememberAll()` | `Promise<boolean>` |
 
 #### Dispatch helpers
 `loadFilters(params)` · `updateSortByParam(s)` · `includeFilter(group, value, labels?)` · `excludeFilter(group, value, labels?)` · `applyMultiSelectFilters(filters)` · `clearAllFilters(params?)` · `selectResourceType(model)` · `setFiltersOpen(b)` · `setRememberAll(b)` · `dispatch(action)`
@@ -867,23 +889,34 @@ constructor() {
 | `configSignal()` | `Signal<ViewConfigData \| undefined>` | `undefined` |
 | `systemConfigurationSignal()` | `Signal<SystemConfiguration \| undefined>` | `undefined` |
 | `mappingTablesSignal()` | `Signal<MappingTables \| undefined>` | `undefined` |
+| `primoViewSignal()` | `Signal<PrimoView \| undefined>` | `undefined` |
 | `scopesSignal()` | `Signal<Scope[] \| undefined>` | `undefined` |
 | `tabsSignal()` | `Signal<string[] \| undefined>` | `undefined` |
+| `tilesSignal()` | `Signal<Tiles \| undefined>` | `undefined` |
 | `featureFlagsSignal()` | `Signal<FeatureFlags \| undefined>` | `undefined` |
 | `ndeAddonsSignal()` | `Signal<Record<string, NdeAddonData> \| undefined>` | `undefined` |
 | `institutionCodeSignal()` | `Signal<string \| undefined>` | `undefined` |
+| `institutionNameSignal()` | `Signal<string \| undefined>` | `undefined` |
 | `vidSignal()` | `Signal<string \| undefined>` | `undefined` |
 | `interfaceLanguageSignal()` | `Signal<string \| undefined>` | `undefined` |
 
 #### Snapshots
 | Method | Returns |
 |---|---|
+| `getStatus()` | `Promise<LoadingStatus>` |
 | `getConfig()` | `Promise<ViewConfigData \| undefined>` |
 | `getSystemConfiguration()` | `Promise<SystemConfiguration \| undefined>` |
 | `getMappingTables()` | `Promise<MappingTables \| undefined>` |
+| `getPrimoView()` | `Promise<PrimoView \| undefined>` |
+| `getScopes()` | `Promise<Scope[] \| undefined>` |
+| `getTabs()` | `Promise<string[] \| undefined>` |
+| `getTiles()` | `Promise<Tiles \| undefined>` |
 | `getFeatureFlags()` | `Promise<FeatureFlags \| undefined>` |
+| `getNdeAddons()` | `Promise<Record<string, NdeAddonData> \| undefined>` |
 | `getInstitutionCode()` | `Promise<string \| undefined>` |
+| `getInstitutionName()` | `Promise<string \| undefined>` |
 | `getVid()` | `Promise<string \| undefined>` |
+| `getInterfaceLanguage()` | `Promise<string \| undefined>` |
 
 ---
 
@@ -913,8 +946,11 @@ constructor() {
 | `entitySignal()` | `Signal<EntityMultiLangData \| undefined>` | `undefined` |
 | `entityStatusSignal()` | `Signal<LoadingStatus \| undefined>` | `undefined` |
 | `wikiDataSignal()` | `Signal<EntityWikiData \| undefined>` | `undefined` |
+| `wikiDataStatusSignal()` | `Signal<LoadingStatus \| undefined>` | `undefined` |
 | `relatedDocsSignal()` | `Signal<RelatedDocList[] \| undefined>` | `undefined` |
+| `relatedDocsStatusSignal()` | `Signal<LoadingStatus \| undefined>` | `undefined` |
 | `relatedEntitiesSignal()` | `Signal<RelatedEntitiesMultiLangDataList[] \| undefined>` | `undefined` |
+| `relatedEntitiesStatusSignal()` | `Signal<LoadingStatus \| undefined>` | `undefined` |
 
 #### Snapshots
 | Method | Returns |
@@ -922,8 +958,12 @@ constructor() {
 | `getEntityId()` | `Promise<string \| undefined>` |
 | `getEntity()` | `Promise<EntityMultiLangData \| undefined>` |
 | `getEntityStatus()` | `Promise<LoadingStatus \| undefined>` |
+| `getWikiData()` | `Promise<EntityWikiData \| undefined>` |
+| `getWikiDataStatus()` | `Promise<LoadingStatus \| undefined>` |
 | `getRelatedDocs()` | `Promise<RelatedDocList[] \| undefined>` |
+| `getRelatedDocsStatus()` | `Promise<LoadingStatus \| undefined>` |
 | `getRelatedEntities()` | `Promise<RelatedEntitiesMultiLangDataList[] \| undefined>` |
+| `getRelatedEntitiesStatus()` | `Promise<LoadingStatus \| undefined>` |
 
 ---
 
@@ -965,6 +1005,9 @@ constructor() {
 | `searchHistoryListSignal()` | `Signal<SearchHistoryItem[] \| undefined>` | `undefined` |
 | `selectedInstitutionSignal()` | `Signal<MappedInstItem \| undefined>` | `undefined` |
 | `institutionsListSignal()` | `Signal<MappedInstItem[] \| undefined>` | `undefined` |
+| `loansStatusSignal()` | `Signal<LoadingStatus \| undefined>` | `undefined` |
+| `requestsStatusSignal()` | `Signal<LoadingStatus \| undefined>` | `undefined` |
+| `finesStatusSignal()` | `Signal<LoadingStatus \| undefined>` | `undefined` |
 
 #### Snapshots
 | Method | Returns |
@@ -972,8 +1015,18 @@ constructor() {
 | `getLoansCounter()` | `Promise<number \| undefined>` |
 | `getRequestsCounter()` | `Promise<number \| undefined>` |
 | `getFinesCounter()` | `Promise<number \| undefined>` |
+| `getBlocksCounter()` | `Promise<number \| undefined>` |
+| `getFavoritesCounter()` | `Promise<number \| undefined>` |
+| `getLoansList()` | `Promise<LoanItem[] \| undefined>` |
+| `getRequestsList()` | `Promise<MappedRequestItem[] \| undefined>` |
+| `getFinesList()` | `Promise<MappedFineItem[] \| undefined>` |
 | `getSavedSearchesList()` | `Promise<SearchHistoryItem[] \| undefined>` |
+| `getSearchHistoryList()` | `Promise<SearchHistoryItem[] \| undefined>` |
 | `getSelectedInstitution()` | `Promise<MappedInstItem \| undefined>` |
+| `getInstitutionsList()` | `Promise<MappedInstItem[] \| undefined>` |
+| `getLoansStatus()` | `Promise<LoadingStatus \| undefined>` |
+| `getRequestsStatus()` | `Promise<LoadingStatus \| undefined>` |
+| `getFinesStatus()` | `Promise<LoadingStatus \| undefined>` |
 
 ---
 

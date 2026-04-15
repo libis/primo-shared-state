@@ -114,6 +114,38 @@ export class ViewConfigStateService {
     return this.helper.selectOnce((state: any) => state.viewConfig?.config?.vid);
   }
 
+  async getStatus(): Promise<LoadingStatus> {
+    return this.helper.selectOnce((state: any) => state.viewConfig?.status || 'pending');
+  }
+
+  async getPrimoView(): Promise<PrimoView | undefined> {
+    return this.helper.selectOnce((state: any) => state.viewConfig?.config?.['primo-view']);
+  }
+
+  async getScopes(): Promise<Scope[] | undefined> {
+    return this.helper.selectOnce((state: any) => state.viewConfig?.config?.['primo-view']?.scopes);
+  }
+
+  async getTabs(): Promise<string[] | undefined> {
+    return this.helper.selectOnce((state: any) => state.viewConfig?.config?.['primo-view']?.['available-tabs']);
+  }
+
+  async getTiles(): Promise<Tiles | undefined> {
+    return this.helper.selectOnce((state: any) => state.viewConfig?.config?.tiles);
+  }
+
+  async getNdeAddons(): Promise<Record<string, NdeAddonData> | undefined> {
+    return this.helper.selectOnce((state: any) => state.viewConfig?.config?.ndeAddons);
+  }
+
+  async getInstitutionName(): Promise<string | undefined> {
+    return this.helper.selectOnce((state: any) => state.viewConfig?.config?.['primo-view']?.institution?.['institution-name']);
+  }
+
+  async getInterfaceLanguage(): Promise<string | undefined> {
+    return this.helper.selectOnce((state: any) => state.viewConfig?.config?.['primo-view']?.['attributes-map']?.interfaceLanguage);
+  }
+
   // ── Signal API ────────────────────────────────────────────────────────────
 
   statusSignal(): Signal<LoadingStatus> {
@@ -158,5 +190,17 @@ export class ViewConfigStateService {
 
   interfaceLanguageSignal(): Signal<string | undefined> {
     return this.helper.selectSignal((state: any) => state.viewConfig?.config?.['primo-view']?.['attributes-map']?.interfaceLanguage, undefined);
+  }
+
+  primoViewSignal(): Signal<PrimoView | undefined> {
+    return this.helper.selectSignal((state: any) => state.viewConfig?.config?.['primo-view'], undefined);
+  }
+
+  tilesSignal(): Signal<Tiles | undefined> {
+    return this.helper.selectSignal((state: any) => state.viewConfig?.config?.tiles, undefined);
+  }
+
+  institutionNameSignal(): Signal<string | undefined> {
+    return this.helper.selectSignal((state: any) => state.viewConfig?.config?.['primo-view']?.institution?.['institution-name'], undefined);
   }
 }

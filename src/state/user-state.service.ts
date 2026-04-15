@@ -98,6 +98,22 @@ export class UserStateService {
     return this.helper.selectOnce((state: any) => state.user?.userSettings);
   }
 
+  async getUserState(): Promise<UserState> {
+    return this.helper.selectOnce((state: any) => state.user);
+  }
+
+  async getDecodedJwt(): Promise<DecodedJwt | undefined> {
+    return this.helper.selectOnce((state: any) => state.user?.decodedJwt);
+  }
+
+  async getUserName(): Promise<string | undefined> {
+    return this.helper.selectOnce((state: any) => state.user?.decodedJwt?.userName);
+  }
+
+  async getUserGroup(): Promise<string> {
+    return this.helper.selectOnce((state: any) => state.user?.decodedJwt?.userGroup || 'GUEST');
+  }
+
   /**
    * Dispatch an action to update user state
    * Note: You need to import and use actual action creators from the host app

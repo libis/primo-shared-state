@@ -101,6 +101,22 @@ export class FilterStateService {
     return this.helper.selectOnce((state: any) => state.filters?.multiSelectedFilter);
   }
 
+  async getFilterState(): Promise<FilterState> {
+    return this.helper.selectOnce((state: any) => state.filters);
+  }
+
+  async getResourceTypeFilter(): Promise<ResourceTypeFilterModel | null> {
+    return this.helper.selectOnce((state: any) => state.filters?.resourceTypeFilter);
+  }
+
+  async isFiltersOpen(): Promise<boolean> {
+    return this.helper.selectOnce((state: any) => state.filters?.isFiltersOpen || false);
+  }
+
+  async isRememberAll(): Promise<boolean> {
+    return this.helper.selectOnce((state: any) => state.filters?.isRememberAll || false);
+  }
+
   /**
    * Dispatch an action to update filter state
    * Note: You need to import and use actual action creators from the host app

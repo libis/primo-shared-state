@@ -112,6 +112,46 @@ export class AccountStateService {
     return this.helper.selectOnce((state: any) => state.account?.selectedInstitution);
   }
 
+  async getBlocksCounter(): Promise<number | undefined> {
+    return this.helper.selectOnce((state: any) => state.account?.blocksCounter);
+  }
+
+  async getFavoritesCounter(): Promise<number | undefined> {
+    return this.helper.selectOnce((state: any) => state.account?.favoritesCounter);
+  }
+
+  async getLoansList(): Promise<LoanItem[] | undefined> {
+    return this.helper.selectOnce((state: any) => state.account?.loansList);
+  }
+
+  async getRequestsList(): Promise<MappedRequestItem[] | undefined> {
+    return this.helper.selectOnce((state: any) => state.account?.requestsList);
+  }
+
+  async getFinesList(): Promise<MappedFineItem[] | undefined> {
+    return this.helper.selectOnce((state: any) => state.account?.finesList);
+  }
+
+  async getSearchHistoryList(): Promise<SearchHistoryItem[] | undefined> {
+    return this.helper.selectOnce((state: any) => state.account?.searchHistoryList);
+  }
+
+  async getInstitutionsList(): Promise<MappedInstItem[] | undefined> {
+    return this.helper.selectOnce((state: any) => state.account?.institutionsList);
+  }
+
+  async getLoansStatus(): Promise<LoadingStatus | undefined> {
+    return this.helper.selectOnce((state: any) => state.account?.loansStatus);
+  }
+
+  async getRequestsStatus(): Promise<LoadingStatus | undefined> {
+    return this.helper.selectOnce((state: any) => state.account?.requestsStatus);
+  }
+
+  async getFinesStatus(): Promise<LoadingStatus | undefined> {
+    return this.helper.selectOnce((state: any) => state.account?.finesStatus);
+  }
+
   // ── Signal API ────────────────────────────────────────────────────────────
 
   loansCounterSignal(): Signal<number | undefined> {
@@ -160,5 +200,17 @@ export class AccountStateService {
 
   institutionsListSignal(): Signal<MappedInstItem[] | undefined> {
     return this.helper.selectSignal((state: any) => state.account?.institutionsList, undefined);
+  }
+
+  loansStatusSignal(): Signal<LoadingStatus | undefined> {
+    return this.helper.selectSignal((state: any) => state.account?.loansStatus, undefined);
+  }
+
+  requestsStatusSignal(): Signal<LoadingStatus | undefined> {
+    return this.helper.selectSignal((state: any) => state.account?.requestsStatus, undefined);
+  }
+
+  finesStatusSignal(): Signal<LoadingStatus | undefined> {
+    return this.helper.selectSignal((state: any) => state.account?.finesStatus, undefined);
   }
 }

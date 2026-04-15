@@ -151,6 +151,58 @@ export class SearchStateService {
     return this.helper.selectOnce((state: any) => state.Search?.searchParams);
   }
 
+  async getSearchMetaData(): Promise<SearchMetaData | null> {
+    return this.helper.selectOnce((state: any) => state.Search?.searchResultsMetaData);
+  }
+
+  async getSearchStatus(): Promise<LoadingStatus> {
+    return this.helper.selectOnce((state: any) => state.Search?.status || 'pending');
+  }
+
+  async getTotalResults(): Promise<number> {
+    return this.helper.selectOnce((state: any) => state.Search?.searchResultsMetaData?.info?.total || 0);
+  }
+
+  async getPageSize(): Promise<number | null> {
+    return this.helper.selectOnce((state: any) => state.Search?.selectedPageSize);
+  }
+
+  async isLoading(): Promise<boolean> {
+    return this.helper.selectOnce((state: any) => state.Search?.status === 'loading');
+  }
+
+  async getSearchNotificationMsg(): Promise<string> {
+    return this.helper.selectOnce((state: any) => state.Search?.searchNotificationMsg || '');
+  }
+
+  async getPcAvailabilityToggleValue(): Promise<boolean> {
+    return this.helper.selectOnce((state: any) => state.Search?.pcAvailabilityToggleValue || false);
+  }
+
+  async getSearchInFullTextToggleValue(): Promise<boolean> {
+    return this.helper.selectOnce((state: any) => state.Search?.searchInFullTextToggleValue || false);
+  }
+
+  async isSnackBarOpen(): Promise<boolean> {
+    return this.helper.selectOnce((state: any) => state.Search?.isSnackBarOpen || false);
+  }
+
+  async getDisplaySummary(): Promise<boolean> {
+    return this.helper.selectOnce((state: any) => state.Search?.displaySummary || false);
+  }
+
+  async isReportAProblemOpen(): Promise<boolean> {
+    return this.helper.selectOnce((state: any) => state.Search?.isReportAProblemOpen || false);
+  }
+
+  async getCurrentSearchTerm(): Promise<string | undefined> {
+    return this.helper.selectOnce((state: any) => state.Search?.currentSearchTerm);
+  }
+
+  async getSelectedSortBy(): Promise<string | null> {
+    return this.helper.selectOnce((state: any) => state.Search?.selectedSortBy || null);
+  }
+
   /**
    * Dispatch an action to update search state
    * Note: You need to import and use actual action creators from the host app
@@ -167,6 +219,10 @@ export class SearchStateService {
       if (!searchState?.entities) return [];
       return Object.values(searchState.entities).filter((doc): doc is Doc => doc !== undefined);
     }, [] as Doc[]);
+  }
+
+  docByIdSignal(id: string): Signal<Doc | undefined> {
+    return this.helper.selectSignal((state: any) => state.Search?.entities?.[id], undefined);
   }
 
   searchParamsSignal(): Signal<SearchParams | null> {
