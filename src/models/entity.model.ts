@@ -237,6 +237,7 @@ export interface AutoCompleteBaseEntity {
   id: string;
   short_description?: StringEntityValue;
   image_info?: ImageInfo;
+  score?: number;
 }
 
 export interface AutoCompletePersonEntity extends AutoCompleteBaseEntity {

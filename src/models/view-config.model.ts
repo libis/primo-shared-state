@@ -23,6 +23,7 @@ export interface ViewConfigData {
   fieldsWithUseTranslation:          string[];
   IsViewNdeEnabled:                  boolean;
   enable_mixpanel:                   boolean;
+  patron_default_sort:               boolean;
   enableExtendSession:               boolean;
   enableExtendSessionToMax:          boolean;
   enableUserSettingForExtendSession: boolean;
@@ -42,6 +43,13 @@ export interface ViewConfigData {
   discovery_services_page:           boolean;
   limited_patrons_in_alma_starter:   boolean;
   limited_patrons_acq_in_alma_starter: boolean;
+  searchWithinJournalConfig:         SearchWithinJournal;
+}
+
+export interface SearchWithinJournal {
+  tab?: string;
+  scope?: string;
+  summonUrl?: string;
 }
 
 export interface FeatureFlags {
@@ -443,6 +451,9 @@ export interface SystemConfiguration {
   esploro_enabled: boolean;
   special_collections_enable: boolean;
   enforce_strong_password: boolean;
+  enable_search_inside_journal: boolean;
+  display_register_button_by_restricted_user_groups: boolean;
+  primo_loan_list_sorting: string;
 }
 
 export interface HideRapidoExpandLinkMap {

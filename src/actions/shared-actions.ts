@@ -26,10 +26,15 @@
  * - FavoriteActions.addFavorite / deleteFavorite — trigger HTTP effects
  * - searchAndAppendAction — triggers HTTP for endless scroll
  * - All "done*" account actions that feed downstream effects
+ * - Analytics send* actions — trigger analytics HTTP side-effects
+ *
+ * REMOVED IN 2026.4.1:
+ * - fetchUnpaywallLinksAction — no longer exists in the host; the host
+ *   now resolves unpaywall links inline via Doc.pnx.links.linkunpaywall.
  */
 
 import { createAction, props } from '@ngrx/store';
-import { Doc, Facet, SearchData, SearchParams } from '../models/search.model';
+import { Facet, SearchData, SearchParams } from '../models/search.model';
 import { DecodedJwt, UserSettings } from '../models/user.model';
 import { LogoutReason } from '../models/state.const';
 import { ResourceTypeFilterModel } from '../models/filter.model';
@@ -77,12 +82,6 @@ export const pageNumberChangedAction = createAction(
 export const sortByChangedAction = createAction(
   '[search] Sort By Changed',
   props<{ sort: string }>()
-);
-
-/** SAFE: Command to fetch unpaywall links for given records. Remote supplies records it has. */
-export const fetchUnpaywallLinksAction = createAction(
-  '[Search] Fetch unpaywall links',
-  props<{ recordsToUpdate: Doc[] }>()
 );
 
 /** SAFE: Pure UI-state write — marks current search as saved. */
@@ -133,6 +132,12 @@ export const setPresentNotificationAction = createAction(
   props<{ presentNotification: boolean }>()
 );
 
+/** SAFE: Pure UI toggle — controls Resource Recommender panel expansion. NOTE: lowercase [search], trailing space in type string. */
+export const setIsResourceRecommenderExpandedAction = createAction(
+  '[search] Set Is Resource Recommender Expanded ',
+  props<{ isResourceRecommenderExpanded: boolean }>()
+);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Filter / search-filter actions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -162,6 +167,18 @@ export const IncludeFilterButtonClickedAction = createAction(
 export const ExcludeFilterButtonClickedAction = createAction(
   '[Filter Side Bar] Add Exclude Filter Clicked',
   props<{ filterGroup: string; filterValue: string; mergedLabels: string[] }>()
+);
+
+/** SAFE: Command to remove a previously-applied include filter. Host effect triggers a new search. */
+export const removeIncludeFilterAction = createAction(
+  '[Filter Group Dropdown] Remove Include Filter',
+  props<{ filterValue: string; filterGroup: string; mergedLabels: string[] }>()
+);
+
+/** SAFE: Command to remove a previously-applied exclude filter. Host effect triggers a new search. */
+export const removeExcludeFilterAction = createAction(
+  '[Filter Group Dropdown] Remove Exclude Filter',
+  props<{ filterValue: string; filterGroup: string; mergedLabels: string[] }>()
 );
 
 /**

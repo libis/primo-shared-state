@@ -88,7 +88,7 @@ npm run build
 
 # 3. Create a distributable tarball
 npm pack
-# → libis-primo-shared-state-2026.3.1.tgz
+# → libis-primo-shared-state-2026.4.1.tgz
 ```
 
 ---
@@ -99,14 +99,14 @@ npm pack
 
 ```bash
 npm pack
-cp libis-primo-shared-state-2026.3.1.tgz path/to/NDE_customModule/nde/
+cp libis-primo-shared-state-2026.4.1.tgz path/to/NDE_customModule/nde/
 ```
 
 ### Step 2 — add the `file:` dependency to the remote's `package.json`
 
 ```json
 "dependencies": {
-  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.3.1.tgz"
+  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.4.1.tgz"
 }
 ```
 
@@ -246,10 +246,13 @@ export class MyComponent {
   scopes$            = this.viewConfig.selectScopes$();
   mappingTables$     = this.viewConfig.selectMappingTables$();
 
-  // Entity / linked data (read-only)
-  entityViewModel$ = this.entity.selectEntityViewModel$();
+  // Entity / linked data (read-only) — flat raw pieces (2026.4.1)
+  entityId$        = this.entity.selectEntityId$();
+  entity$          = this.entity.selectEntity$();            // EntityMultiLangData
   entityStatus$    = this.entity.selectEntityStatus$();
+  wikiData$        = this.entity.selectWikiData$();
   relatedDocs$     = this.entity.selectRelatedDocs$();
+  relatedEntities$ = this.entity.selectRelatedEntities$();   // RelatedEntitiesMultiLangDataList[]
 
   // Account (read-only)
   loansCounter$    = this.account.selectLoansCounter$();
@@ -323,11 +326,13 @@ export class MySignalComponent {
   scopes           = this.viewConfig.scopesSignal();
   interfaceLang    = this.viewConfig.interfaceLanguageSignal();
 
-  // Entity signals (read-only)
-  entityViewModel  = this.entity.entityViewModelSignal();
+  // Entity signals (read-only) — flat raw pieces (2026.4.1)
+  entityId         = this.entity.entityIdSignal();
+  entity           = this.entity.entitySignal();             // EntityMultiLangData
   entityStatus     = this.entity.entityStatusSignal();
+  wikiData         = this.entity.wikiDataSignal();
   relatedDocs      = this.entity.relatedDocsSignal();
-  relatedEntities  = this.entity.relatedEntitiesSignal();
+  relatedEntities  = this.entity.relatedEntitiesSignal();    // RelatedEntitiesMultiLangDataList[]
 
   // Account signals (read-only)
   loansCounter     = this.account.loansCounterSignal();
@@ -372,9 +377,12 @@ const vid      = await this.viewConfig.getVid();
 const instCode = await this.viewConfig.getInstitutionCode();
 const tables   = await this.viewConfig.getMappingTables();
 
-// Entity (read-only)
-const entity   = await this.entity.getEntityViewModel();
+// Entity (read-only) — flat raw pieces (2026.4.1)
+const entityId = await this.entity.getEntityId();
+const entity   = await this.entity.getEntity();          // EntityMultiLangData
 const entStatus = await this.entity.getEntityStatus();
+const relatedDocs = await this.entity.getRelatedDocs();
+const relatedEnts = await this.entity.getRelatedEntities();
 
 // Account (read-only)
 const loans    = await this.account.getLoansCounter();
@@ -477,9 +485,9 @@ import {
   template: `
     <h2>Welcome to {{ vid() }}</h2>
 
-    @if (entityViewModel(); as entity) {
-      <h3>{{ entity.entityDetails?.name }}</h3>
-      <p>Type: {{ entity.entityType }}</p>
+    @if (entity(); as e) {
+      <h3>{{ e.details?.['en']?.name }}</h3>
+      <p>Type: {{ e.entityType }}</p>
     }
 
     @if (loansCounter(); as count) {
@@ -493,8 +501,8 @@ export class ReadOnlyExample {
   institutionCode = this.viewConfig.institutionCodeSignal();
   featureFlags    = this.viewConfig.featureFlagsSignal();
 
-  // Entity — linked-data entity currently being viewed
-  entityViewModel = this.entity.entityViewModelSignal();
+  // Entity — linked-data entity currently being viewed (flat raw pieces)
+  entity          = this.entity.entitySignal();              // EntityMultiLangData
   relatedDocs     = this.entity.relatedDocsSignal();
 
   // Account — patron display data (counters, loans, fines)
@@ -882,30 +890,40 @@ constructor() {
 ### `EntityStateService`
 
 > **Read-only** — no dispatch methods. Entity data is populated by host effects (linked-data API calls).
+>
+> ⚠️ **Breaking change in 2026.4.1** — the host's linked-data-entity state was flattened. The composite `entityViewModel` field no longer exists as raw state; the host now computes it inside a language-aware selector that remotes cannot reach. This service exposes only the raw flat pieces (`entity`, `wikiData`, `relatedDocs`, `relatedEntities` + their statuses). Remotes that need a language-mapped projection must compose it themselves using their own language selector.
 
 #### Observables
 | Method | Returns | Description |
 |---|---|---|
-| `selectEntityViewModel$()` | `Observable<EntityViewModel \| undefined>` | Full entity view model |
+| `selectEntityId$()` | `Observable<string \| undefined>` | Currently-viewed entity ID |
+| `selectEntity$()` | `Observable<EntityMultiLangData \| undefined>` | Raw entity data (multi-language) |
 | `selectEntityStatus$()` | `Observable<LoadingStatus \| undefined>` | Entity load status |
-| `selectRelatedDocs$()` | `Observable<RelatedDocList[] \| undefined>` | Related documents |
-| `selectRelatedEntities$()` | `Observable<RelatedEntitiesList[] \| undefined>` | Related entities |
+| `selectWikiData$()` | `Observable<EntityWikiData \| undefined>` | Wikipedia extract for the entity |
+| `selectWikiDataStatus$()` | `Observable<LoadingStatus \| undefined>` | Wiki data load status |
+| `selectRelatedDocs$()` | `Observable<RelatedDocList[] \| undefined>` | Related documents (grouped) |
 | `selectRelatedDocsStatus$()` | `Observable<LoadingStatus \| undefined>` | Related docs load status |
+| `selectRelatedEntities$()` | `Observable<RelatedEntitiesMultiLangDataList[] \| undefined>` | Related entities (multi-language, grouped) |
 | `selectRelatedEntitiesStatus$()` | `Observable<LoadingStatus \| undefined>` | Related entities load status |
 
 #### Signals
 | Method | Returns | Initial value |
 |---|---|---|
-| `entityViewModelSignal()` | `Signal<EntityViewModel \| undefined>` | `undefined` |
+| `entityIdSignal()` | `Signal<string \| undefined>` | `undefined` |
+| `entitySignal()` | `Signal<EntityMultiLangData \| undefined>` | `undefined` |
 | `entityStatusSignal()` | `Signal<LoadingStatus \| undefined>` | `undefined` |
+| `wikiDataSignal()` | `Signal<EntityWikiData \| undefined>` | `undefined` |
 | `relatedDocsSignal()` | `Signal<RelatedDocList[] \| undefined>` | `undefined` |
-| `relatedEntitiesSignal()` | `Signal<RelatedEntitiesList[] \| undefined>` | `undefined` |
+| `relatedEntitiesSignal()` | `Signal<RelatedEntitiesMultiLangDataList[] \| undefined>` | `undefined` |
 
 #### Snapshots
 | Method | Returns |
 |---|---|
-| `getEntityViewModel()` | `Promise<EntityViewModel \| undefined>` |
+| `getEntityId()` | `Promise<string \| undefined>` |
+| `getEntity()` | `Promise<EntityMultiLangData \| undefined>` |
 | `getEntityStatus()` | `Promise<LoadingStatus \| undefined>` |
+| `getRelatedDocs()` | `Promise<RelatedDocList[] \| undefined>` |
+| `getRelatedEntities()` | `Promise<RelatedEntitiesMultiLangDataList[] \| undefined>` |
 
 ---
 
@@ -1020,6 +1038,8 @@ Parsed claims from the Primo JWT.
 | `signedIn` | `boolean` | Whether the user is actively signed in |
 | `authenticationProfile` | `string` | ILS authentication profile identifier |
 | `user` | `string` | Raw user field from JWT |
+| `selfRegistered` | `boolean` | Whether the user registered themselves *(new in 2026.4.1)* |
+| `restrictedUser` | `boolean` | Whether the user is in a restricted group *(new in 2026.4.1)* |
 
 #### `UserSettings`
 
@@ -1087,6 +1107,10 @@ Parameters sent to the host search engine. `q` and `scope` are required; all oth
 | `isRelatedItems` | `boolean?` | Related items search flag |
 | `analyticAction` | `string?` | Analytics event identifier |
 | `searchTerm` | `string?` | Saved search term for history *(new in 2026.3.1)* |
+| `conVoc` | `boolean?` | Controlled-vocabulary search flag *(new in 2026.4.1)* |
+| `authorityQuery` | `string?` | Authority query string *(new in 2026.4.1)* |
+| `originatingSystem` | `string?` | Originating system identifier *(new in 2026.4.1)* |
+| `originatingSystemId` | `string?` | Originating system record ID *(new in 2026.4.1)* |
 
 #### `SearchParamsWithStrParams`
 
@@ -1130,6 +1154,17 @@ Pagination and result-count metadata.
 | `explain` | `Explain` | Error/debug messages |
 | `browseGap` | `number?` | Gap for browse navigation |
 | `hasMoreResults` | `boolean?` | More results beyond `last` |
+| `controlledVocabulary` | `ControlledVocabulary?` | Controlled-vocabulary error messages *(new in 2026.4.1)* |
+
+#### `ControlledVocabulary`
+
+*New in 2026.4.1.*
+
+```typescript
+interface ControlledVocabulary {
+  errorMessages: string[];
+}
+```
 
 #### `Facet` / `FacetValue`
 
@@ -1165,10 +1200,12 @@ A single search result entity. This is the main object you work with when readin
 | `extras` | `Extras?` | Citation trail and times-cited data |
 | `enrichment` | `Enrichment?` | Virtual-browse enrichment |
 | `thumbnailForCD` | `ThumbnailForCD?` | Combined digital thumbnail info |
-| `unpaywallStatus` | `LoadingStatus?` | Async load status of Unpaywall links |
 | `delivery` | `DocDelivery?` | Delivery/availability data |
 | `expired` | `boolean?` | Whether the record is expired |
 | `origRecordId` | `string?` | Original record ID before de-duplication |
+| `registerUser` | `string?` | Register-user flag/identifier *(new in 2026.4.1)* |
+
+> ⚠️ **Removed in 2026.4.1** — `unpaywallStatus` was removed. The host no longer loads Unpaywall links asynchronously; the URL is read inline from `pnx.links.linkunpaywall` (renamed from `unpaywalllink`).
 
 #### `Context` (enum)
 
@@ -1232,6 +1269,8 @@ Normalised record data structure. Most fields are string-array dictionaries to a
 | `networklinkedrecordid` | `string[]?` |
 | `colldiscovery` | `string[]?` |
 | `save_score` | `number[]?` |
+| `originatingSystem` | `string?` *(new in 2026.4.1)* |
+| `originatingSystemId` | `string?` *(new in 2026.4.1)* |
 
 #### `Links`
 
@@ -1247,7 +1286,7 @@ Normalised record data structure. Most fields are string-array dictionaries to a
 | `backlink` | `string[]?` |
 | `linktorsrcadditional` | `string[]?` |
 | `openurladditional` | `string[]?` |
-| `unpaywalllink` | `string[]?` |
+| `linkunpaywall` | `string[]?` *(renamed from `unpaywalllink` in 2026.4.1)* |
 
 #### `Sort`
 
@@ -1329,6 +1368,7 @@ Full delivery/availability record attached to each `Doc` after the delivery enri
 | `hasFilteredServices` | `string?` | Flag for filtered services |
 | `electronicContextObjectId` | `string?` | Electronic context object ID |
 | `mayAlsoBeFoundAt` | `MayAlsoBeFoundAtItem[]?` | Cross-institution availability |
+| `titleRequestableAtItemLevel` | `boolean?` | Title requestable at item level *(new in 2026.4.1)* |
 
 ---
 
@@ -1397,6 +1437,45 @@ One electronic access option (full text, open access, etc.).
 | `fromNetwork` | `boolean?` |
 | `filteredByAfGroups` | `string?` |
 | `supported` | `boolean?` |
+| `serviceNotAvailable` | `string?` *(new in 2026.4.1)* |
+| `serviceNotAvailableReason` | `string?` *(new in 2026.4.1)* |
+| `researchFileList` | `EsploroResearchFile[]?` *(new in 2026.4.1)* |
+| `researchLinksList` | `EsploroResearchLink[]?` *(new in 2026.4.1)* |
+
+##### `EsploroResearchFile` / `EsploroResearchLink`
+
+*New in 2026.4.1 — Esploro research-output records attached to an electronic service.*
+
+```typescript
+interface EsploroResearchFile {
+  pid: string;
+  fileName: string;
+  size: string;
+  format: string;
+  fileType?: string;
+  fileSupplemental?: boolean;
+  description?: string;
+  haveAccessRight: boolean;
+  licenseName?: string;
+  licenseUrl?: string;
+  accessRightStatement?: string;
+  accessRightDeniedNote?: string;
+  embargoExpiryDate?: string;
+}
+
+interface EsploroResearchLink {
+  linkPid?: string;
+  linkTitle?: string;
+  linkURL: string;
+  linkType?: string;
+  linkSupplemental?: boolean;
+  linkDescription?: string;
+  linkLicenseName?: string;
+  linkLicenseURL?: string;
+  linkRights?: string;
+  displayInViewer?: boolean;
+}
+```
 
 ##### `AdditionalElectronicService`
 
@@ -1565,6 +1644,7 @@ URL query parameters for the full-display route.
 | `state` | `string?` |
 | `lang` | `string?` |
 | `newspapersSearch` | `boolean?` |
+| `authfulldisplay` | `boolean?` *(new in 2026.4.1)* |
 
 ##### `FullDisplayParams`
 
@@ -1578,6 +1658,7 @@ Internal params for loading a full-display record.
 | `isFrbr` | `boolean?` |
 | `scope` | `string?` |
 | `isHighlightedRecord` | `boolean?` |
+| `authfulldisplay` | `boolean?` *(new in 2026.4.1)* |
 
 ##### `RecordMainDetailsIfc`
 
@@ -1790,10 +1871,30 @@ Top-level config object. Key properties:
 | `tiles` | `Tiles` |
 | `feature-flags` | `FeatureFlags` |
 | `ndeAddons` | `Record<string, NdeAddonData>` |
+| `patron_default_sort` | `boolean` *(new in 2026.4.1)* |
+| `searchWithinJournalConfig` | `SearchWithinJournal` *(new in 2026.4.1)* |
+
+#### `SearchWithinJournal`
+
+*New in 2026.4.1 — config for the "search within journal" feature.*
+
+```typescript
+interface SearchWithinJournal {
+  tab?: string;
+  scope?: string;
+  summonUrl?: string;
+}
+```
 
 #### `SystemConfiguration`
 
-~140+ properties controlling search behaviour, display settings, and institutional policies. See the source file for the full list.
+~140+ properties controlling search behaviour, display settings, and institutional policies. See the source file for the full list. Fields added in 2026.4.1:
+
+| Field | Type |
+|---|---|
+| `enable_search_inside_journal` | `boolean` |
+| `display_register_button_by_restricted_user_groups` | `boolean` |
+| `primo_loan_list_sorting` | `string` |
 
 #### `MappingTables`
 
@@ -1842,16 +1943,41 @@ Defined in `src/models/entity.model.ts`. Read-only view models for linked-data e
 | `organization` = `'organization'` |
 | `location` = `'location'` |
 
-#### `EntityViewModel`
+#### `EntityMultiLangData`
 
-Extends `BasicEntityData` with status fields:
+*The raw shape exposed by `EntityStateService.selectEntity$()` — multi-language details keyed by language code.*
 
 | Field | Type |
 |---|---|
-| `entityType` | `EntityType` |
-| `entityDetails` | `EntityDetails` |
-| `entityThumbnail` | `EntityThumbnail` |
+| `id` | `string \| undefined` |
+| `entityType` | `EntityType \| undefined` |
+| `details` | `{ [lang: string]: EntityDetails }` |
+| `thumbnail` | `EntityThumbnail` |
+| `coordinates` | `MapCoordinates[]?` |
+
+#### `BasicEntityData`
+
+Flat per-language entity data used when composing a language-specific view.
+
+| Field | Type |
+|---|---|
+| `id` | `string \| undefined` |
+| `entityType` | `EntityType \| undefined` |
+| `name` | `string \| undefined` |
+| `description` | `string \| undefined` |
+| `properties` | `DisplayProperty[]` |
+| `thumbnail` | `EntityThumbnail \| undefined` |
+| `coordinates` | `MapCoordinates[]?` |
+
+#### `EntityViewModel`
+
+Extends `BasicEntityData` with async status and related-data fields. Remotes typically compose this themselves from raw state pieces; this interface documents the composite shape host code produces.
+
+| Field | Type |
+|---|---|
 | `entityStatus` | `LoadingStatus` |
+| `wikiData` | `EntityWikiData \| undefined` |
+| `wikiDataStatus` | `LoadingStatus` |
 | `relatedDocs` | `RelatedDocList[]` |
 | `relatedEntities` | `RelatedEntitiesList[]` |
 | `relatedDocsStatus` | `LoadingStatus` |
@@ -1861,24 +1987,63 @@ Extends `BasicEntityData` with status fields:
 
 | Field | Type |
 |---|---|
-| `name` | `string` |
-| `description` | `string` |
+| `name` | `string \| undefined` |
+| `description` | `string \| undefined` |
 | `properties` | `DisplayProperty[]` |
+| `wikiUrl` | `string \| undefined` |
+| `pageTitle` | `string \| undefined` |
+
+#### `EntityThumbnail`
+
+| Field | Type |
+|---|---|
+| `imageUrl` | `string` |
+| `imageName` | `string?` |
+| `imagePageLink` | `string?` |
+| `imageArtist` | `string?` |
+| `licenseText` | `string?` |
+| `licenseUrl` | `string?` |
+| `licenseCode` | `string?` |
+
+#### `EntityWikiData`
+
+| Field | Type |
+|---|---|
+| `wikiUrl` | `string` |
+| `wikiDescription` | `string \| undefined` |
 
 #### `RelatedDocList`
 
+Extends `RelatedDocsDef` with a `docs` array.
+
 | Field | Type |
 |---|---|
-| `searchMode` | `string` |
+| `query` | `string` |
+| `titleLabel` | `string` |
+| `showAllLabel` | `string` |
+| `showAllAriaLabel` | `string` |
+| `searchMode` | `RelatedEntitiesSearchMode` |
 | `docs` | `Doc[]` |
-| `total` | `number` |
+
+#### `RelatedEntitiesMultiLangDataList`
+
+*The raw shape exposed by `EntityStateService.selectRelatedEntities$()` — entities carry multi-language details.*
+
+| Field | Type |
+|---|---|
+| `entities` | `EntityMultiLangData[]` |
+| `titleLabel` | `string` |
+| `entitiesType` | `EntityType` |
 
 #### `RelatedEntitiesList`
 
+Per-language version used in the composite `EntityViewModel`.
+
 | Field | Type |
 |---|---|
-| `searchMode` | `string` |
 | `entities` | `BasicEntityData[]` |
+| `titleLabel` | `string` |
+| `entitiesType` | `EntityType` |
 | `total` | `number` |
 
 ---
@@ -1985,7 +2150,6 @@ import { searchAction, loadFiltersAction, setDecodedJwt } from '@libis/primo-sha
 | `pageLimitChangedAction` | `[Search] Page Limit Changed` | `{ limit: number }` |
 | `pageNumberChangedAction` | `[Search] Page Number Changed` | `{ pageNumber: number }` |
 | `sortByChangedAction` | `[search] Sort By Changed` ¹ | `{ sort: string }` |
-| `fetchUnpaywallLinksAction` | `[Search] Fetch unpaywall links` | `{ recordsToUpdate: Doc[] }` |
 | `updateIsSavedSearch` | `[Search] Update Is Saved Search` | `{ isSavedSearch: boolean }` |
 | `setSearchNotificationMsg` | `[search] Set Search Notification Message` ¹ | `{ msg: string }` |
 | `saveCurrentSearchTermAction` | `[Search] save current search term` | `{ searchTerm: string }` |
@@ -2004,6 +2168,7 @@ import { searchAction, loadFiltersAction, setDecodedJwt } from '@libis/primo-sha
 | `changePcAvailabilityToggleValue` | `[Filter Side Bar] Expand My Results value changed` | `{ pcAvailabilityToggleValue: boolean }` |
 | `searchInFullTextToggleChanged` | `[Filter Side Bar] Search In Full Text toggle pressed` | `{ searchInFullTextToggleValue: boolean }` |
 | `changeSearchInFullTextToggleValue` | `[Filter Side Bar] Search In Full Text value changed` | `{ searchInFullTextToggleValue: boolean }` |
+| `setIsResourceRecommenderExpandedAction` *(new in 2026.4.1)* | `[search] Set Is Resource Recommender Expanded ` ¹² | `{ isResourceRecommenderExpanded: boolean }` |
 
 ¹ Lowercase `[search]` in type string.
 ² Trailing space in type string — must match exactly.
@@ -2018,6 +2183,8 @@ import { searchAction, loadFiltersAction, setDecodedJwt } from '@libis/primo-sha
 | `updateSortByParam` | `[Filter] Update Sort By Param` | `{ sort: string }` |
 | `IncludeFilterButtonClickedAction` | `[Filter Side Bar] Add Include Filter Clicked` | `{ filterGroup: string; filterValue: string; mergedLabels: string[] }` |
 | `ExcludeFilterButtonClickedAction` | `[Filter Side Bar] Add Exclude Filter Clicked` | `{ filterGroup: string; filterValue: string; mergedLabels: string[] }` |
+| `removeIncludeFilterAction` *(new in 2026.4.1)* | `[Filter Group Dropdown] Remove Include Filter` | `{ filterValue: string; filterGroup: string; mergedLabels: string[] }` |
+| `removeExcludeFilterAction` *(new in 2026.4.1)* | `[Filter Group Dropdown] Remove Exclude Filter` | `{ filterValue: string; filterGroup: string; mergedLabels: string[] }` |
 | `applyMultiSelectFiltersAction` | `[Filter Side Bar] Apply Multi-select Filters` | `{ multiSelectedFilters: FilterGroupValue[] }` |
 | `clearAllFiltersAction` | `[Filters] Clear All Filter` | `{ searchParams?: SearchParams }` |
 | `resourceTypeFilterSelectedAction` | `[Resource Type Filter Bar] Resource Type Filter Bar Selected` | `{ selectedResourceType: ResourceTypeFilterModel }` |
@@ -2062,7 +2229,7 @@ The host store state slice is not yet populated. Use `selectIsLoggedIn$()` as a 
 
 ## Versioning
 
-This package uses `YYYY.M.regenerateCount` versioning (e.g. `2026.3.1`):
+This package uses `YYYY.M.regenerateCount` versioning (e.g. `2026.4.1`):
 
 - `YYYY` — four-digit year
 - `M` — month (no leading zero)
@@ -2072,7 +2239,7 @@ This package uses `YYYY.M.regenerateCount` versioning (e.g. `2026.3.1`):
 # After regenerating, build and pack:
 npm run build
 npm pack
-# → libis-primo-shared-state-2026.3.1.tgz
+# → libis-primo-shared-state-2026.4.1.tgz
 ```
 
 ## Regenerating this package

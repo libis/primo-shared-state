@@ -577,12 +577,16 @@ export class ConfigAwareWidgetComponent implements OnInit {
 
 Read-only access to linked-data entity state (person, organisation, location pages).
 
+> **2026.4.1 — breaking change.** `EntityStateService` now exposes the **raw flat state pieces** (`entity`, `wikiData`, `relatedDocs`, `relatedEntities` + statuses) instead of a composite `entityViewModel`. The entity itself is multi-language (`EntityMultiLangData`) — pick the current interface language to render a specific `EntityDetails`. Related entities are also multi-language.
+
 ```typescript
-import { Component } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { Component, computed } from '@angular/core';
 import {
   EntityStateService,
-  EntityViewModel,
+  ViewConfigStateService,
+  EntityMultiLangData,
+  RelatedDocList,
+  RelatedEntitiesMultiLangDataList,
   EntityType,
 } from '@libis/primo-shared-state';
 
@@ -590,35 +594,43 @@ import {
   selector: 'app-entity-card',
   template: `
     @if (entityStatus() === 'success') {
-      @if (entity(); as vm) {
+      @if (entity(); as e) {
+        @let details = e.details?.[lang()];
         <div class="entity-card">
-          @if (vm.entityThumbnail?.url) {
-            <img [src]="vm.entityThumbnail.url" [alt]="vm.entityDetails?.name" />
+          @if (e.thumbnail?.imageUrl) {
+            <img [src]="e.thumbnail.imageUrl" [alt]="details?.name" />
           }
 
-          <h2>{{ vm.entityDetails?.name }}</h2>
-          <span class="badge">{{ vm.entityType }}</span>
+          <h2>{{ details?.name }}</h2>
+          <span class="badge">{{ e.entityType }}</span>
 
-          @if (vm.entityDetails?.description) {
-            <p>{{ vm.entityDetails.description }}</p>
+          @if (details?.description) {
+            <p>{{ details?.description }}</p>
           }
 
-          @if (vm.entityDetails?.properties?.length) {
+          @if (details?.properties?.length) {
             <dl>
-              @for (prop of vm.entityDetails.properties; track prop.label) {
+              @for (prop of details!.properties; track prop.label) {
                 <dt>{{ prop.label }}</dt>
                 <dd>{{ prop.value }}</dd>
               }
             </dl>
+          }
+
+          @if (wikiData(); as wiki) {
+            <section class="wiki">
+              <p>{{ wiki.wikiDescription }}</p>
+              <a [href]="wiki.wikiUrl" target="_blank" rel="noopener">Wikipedia</a>
+            </section>
           }
         </div>
 
         <!-- Related documents -->
         @if (relatedDocs()?.length) {
           <h3>Related Documents</h3>
-          @for (group of relatedDocs()!; track group.searchMode) {
+          @for (group of relatedDocs()!; track group.query) {
             <div class="related-group">
-              <h4>{{ group.searchMode }} ({{ group.total }})</h4>
+              <h4>{{ group.titleLabel }}</h4>
               @for (doc of group.docs; track doc['@id']) {
                 <p>{{ doc.pnx.display.title?.[0] }}</p>
               }
@@ -626,14 +638,14 @@ import {
           }
         }
 
-        <!-- Related entities -->
+        <!-- Related entities (multi-language — index into details by current lang) -->
         @if (relatedEntities()?.length) {
           <h3>Related Entities</h3>
-          @for (group of relatedEntities()!; track group.searchMode) {
+          @for (group of relatedEntities()!; track group.titleLabel) {
             <div class="related-group">
-              <h4>{{ group.searchMode }} ({{ group.total }})</h4>
-              @for (ent of group.entities; track ent.entityDetails?.name) {
-                <p>{{ ent.entityDetails?.name }} ({{ ent.entityType }})</p>
+              <h4>{{ group.titleLabel }} ({{ group.entitiesType }})</h4>
+              @for (ent of group.entities; track ent.id) {
+                <p>{{ ent.details?.[lang()]?.name }}</p>
               }
             </div>
           }
@@ -645,12 +657,19 @@ import {
   `
 })
 export class EntityCardComponent {
-  entity          = this.entityState.entityViewModelSignal();
+  entity          = this.entityState.entitySignal();
   entityStatus    = this.entityState.entityStatusSignal();
+  wikiData        = this.entityState.wikiDataSignal();
   relatedDocs     = this.entityState.relatedDocsSignal();
   relatedEntities = this.entityState.relatedEntitiesSignal();
 
-  constructor(private entityState: EntityStateService) {}
+  // Remotes supply their own language selector — ViewConfigService is one source.
+  lang = computed(() => this.viewConfig.interfaceLanguageSignal()() ?? 'en');
+
+  constructor(
+    private entityState: EntityStateService,
+    private viewConfig: ViewConfigStateService,
+  ) {}
 }
 ```
 

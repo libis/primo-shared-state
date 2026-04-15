@@ -43,6 +43,10 @@ export interface SearchParams {
   isRelatedItems?: boolean,
   analyticAction?: string,
   searchTerm?: string,
+  conVoc?: boolean,
+  authorityQuery?: string,        // Used for Authority search
+  originatingSystem?: string,     // Used for Authority search
+  originatingSystemId?: string,   // Used for Authority search
 }
 
 export interface SearchParamsWithStrParams   extends Omit<SearchParams, 'qInclude' | 'qExclude' | 'multiFacets'> {
@@ -76,6 +80,7 @@ export interface FullDisplayQueryParams {
   state?: string;
   lang?: string;
   newspapersSearch?:boolean;
+  authfulldisplay?: boolean;
 }
 
 export interface FullDisplayParams {
@@ -85,6 +90,7 @@ export interface FullDisplayParams {
   isFrbr?: boolean;
   scope?: string;
   isHighlightedRecord?: boolean;
+  authfulldisplay?: boolean;
 }
 
 export interface Doc {
@@ -95,10 +101,10 @@ export interface Doc {
   extras?:   Extras;
   enrichment?: Enrichment;
   thumbnailForCD?: ThumbnailForCD;
-  unpaywallStatus?: LoadingStatus;
   delivery?: DocDelivery;
   expired?: boolean;
   origRecordId?: string;
+  registerUser?: string;          // indicator to show the register button
 }
 
 export enum Adaptor {
@@ -137,6 +143,35 @@ export interface MergedDelivery {
 
 export const SUPPORTED_ELECTRONIC_TYPES_FOR_DIGITAL_VIEWER = ["jpg", "tif", "tiff", "gif", "png", "pdf", "jp2","jpeg"];
 
+export interface EsploroResearchFile {
+  pid: string;
+  fileName: string;
+  size: string;
+  format: string;
+  fileType?: string;
+  fileSupplemental?: boolean;
+  description?: string;
+  haveAccessRight: boolean;
+  licenseName?: string;
+  licenseUrl?: string;
+  accessRightStatement?: string;
+  accessRightDeniedNote?: string;
+  embargoExpiryDate?: string;
+}
+
+export interface EsploroResearchLink {
+  linkPid?: string;
+  linkTitle?: string;
+  linkURL: string;
+  linkType?: string;
+  linkSupplemental?: boolean;
+  linkDescription?: string;
+  linkLicenseName?: string;
+  linkLicenseURL?: string;
+  linkRights?: string;
+  displayInViewer?: boolean;
+}
+
 export interface ElectronicService {
   adaptorid: string
   ilsApiId: string
@@ -166,6 +201,10 @@ export interface ElectronicService {
   fromNetwork?: boolean;
   filteredByAfGroups?: string;
   supported?: boolean;
+  serviceNotAvailable?: string;
+  serviceNotAvailableReason?: string;
+  researchFileList?: EsploroResearchFile[];
+  researchLinksList?: EsploroResearchLink[];
 }
 
 export interface AdditionalElectronicService {
@@ -207,6 +246,7 @@ export interface DocDelivery {
   hasFilteredServices?: string;
   electronicContextObjectId?: string;
   mayAlsoBeFoundAt?: MayAlsoBeFoundAtItem[];
+  titleRequestableAtItemLevel?: boolean;
 }
 
 export interface AlmaInstitutionsList {
@@ -319,6 +359,8 @@ export interface Control {
   rapidosourcerecordid? : string[];
   networklinkedrecordid? : string[];
   colldiscovery?:   string[];
+  originatingSystem?: string;
+  originatingSystemId?: string;
 }
 
 export interface Search {
@@ -357,7 +399,7 @@ export interface Links {
   backlink?:             string[];
   linktorsrcadditional?: string[];
   openurladditional?:    string[];
-  unpaywalllink?:        string[];
+  linkunpaywall?:        string[];
 }
 
 export interface GetItLinks {
@@ -430,6 +472,11 @@ export interface Info {
   explain:           Explain;
   browseGap?:        number;
   hasMoreResults?:   boolean;
+  controlledVocabulary?: ControlledVocabulary;
+}
+
+export interface ControlledVocabulary {
+  errorMessages: string[];
 }
 
 export interface Explain {

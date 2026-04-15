@@ -97,6 +97,40 @@ These files from the decompiled source (`app/models/`) define the interfaces to 
 
 ---
 
+## Documentation verification — README.md and EXAMPLES.md
+
+The package ships with two user-facing documentation files that must stay in lock-step with the regenerated `src/`:
+
+- `README.md` — API surface reference: every exported action, state service method, model interface, and Signal/Observable/Promise getter.
+- `EXAMPLES.md` — copy-paste snippets that must compile against the current exported symbols.
+
+After regenerating `src/`, verify and correct both files using the regenerated source as the single source of truth.
+
+### Verification checklist
+
+For every regeneration run, walk these checks against `src/index.ts` and the files it re-exports:
+
+1. **Action inventory** — every action exported from `src/actions/shared-actions.ts` appears in README.md with its payload shape; every action documented in README.md still exists. Remove documentation for actions the safety rules now exclude.
+2. **State service surface** — for each `*StateService` in `src/state/`, list every public getter (`foo$`, `fooSignal`, `getFoo()`) and every typed dispatch method. README's service tables and EXAMPLES's snippets must match exactly (method name, return type, parameters).
+3. **Model interfaces** — every interface re-exported from `src/models/` appears in README.md's models section with its fields. Remove fields that no longer exist; add new ones. Flag renamed fields in the CHANGES entry.
+4. **Read-only vs dispatch boundary** — README must clearly mark which services are read-only (no `dispatch()`). If a service flipped from read-write to read-only (or vice versa) since the last version, update both the prose and any example that tries to dispatch to it.
+5. **Snippet type-check** — every code block in EXAMPLES.md (and any inline snippets in README.md) imports only symbols that exist in `src/index.ts` and calls them with the current signatures. Correct imports, argument lists, and return-type assumptions.
+6. **Version references** — any literal version string in README.md or EXAMPLES.md (install commands, compatibility tables) is updated to the new package version.
+
+### Rules
+
+- ✅ **Correct in place** — do not rewrite the docs wholesale. Preserve the existing structure, tone, and narrative sections (Introduction, Installation, Philosophy, etc.) unless they contradict the regenerated API.
+- ✅ **Remove stale content** — if an action, service method, or model is gone from `src/`, remove its documentation. Do not leave "deprecated" stubs unless the user explicitly asks for a deprecation window.
+- ✅ **Add new content** — new exports get a documentation entry matching the style of their neighbours (same table columns, same snippet shape).
+- ❌ **Do not invent APIs** — if an example requires a helper that does not exist in `src/`, delete the example or rewrite it with existing symbols. Never add a symbol to docs that is not exported.
+- ❌ **Do not document internal utilities** — `StateHelper` and other internals stay out of README/EXAMPLES.
+
+### Cross-reference in CHANGES.md
+
+Add a `### Documentation` subsection to the new version entry listing doc-only corrections (separate from `Added` / `Changed` / `Breaking removals`) so readers can tell API drift from code drift.
+
+---
+
 ## Scenario A — `src/` is empty or does not exist: generate from scratch
 
 1. Analyse the decompiled source. Identify all NgRx state slices, reducers, effects, and action creators.
@@ -106,6 +140,7 @@ These files from the decompiled source (`app/models/`) define the interfaces to 
    - `src/state/` — one service per state slice (`UserStateService`, `SearchStateService`, `FilterStateService`, `ViewConfigStateService`, `EntityStateService`) each with Observable, Promise, Signal, and typed dispatch APIs. Services for read-only slices expose only selectors (no `dispatch()`).
    - `src/utils/StateHelper` — thin `Store` wrapper used internally by the services.
    - `src/index.ts` — barrel export for all public symbols.
+   - `README.md` and `EXAMPLES.md` — generated to match the full API surface per the **Documentation verification** rules above.
    - `package.json` — name `@libis/primo-shared-state`, version `<YYYY>.<M>.1` (e.g. `2026.3.1`).
 3. Create `CHANGES.md` with an initial `## <YYYY>.<M>.1 — <today's date>` section listing everything generated.
 
@@ -122,6 +157,8 @@ These files from the decompiled source (`app/models/`) define the interfaces to 
      - Ask the user for explicit confirmation before removing anything currently exported.
 
 2. Apply all safe additions and updates.
+
+2.5. Verify and correct `README.md` and `EXAMPLES.md` against the updated `src/` using the **Documentation verification** checklist. Doc-only corrections go under a `### Documentation` subsection in the new CHANGES.md entry.
 
 3. Bump the version in `package.json` using `<YYYY>.<M>.<regenerate_count>` format:
    - `<YYYY>` — current four-digit year.
@@ -155,5 +192,7 @@ These files from the decompiled source (`app/models/`) define the interfaces to 
 | File | Action | Reason |
 |------|--------|--------|
 | src/actions/shared-actions.ts | updated | new `fooAction` added; `barSuccessAction` excluded (feeds downstream effect) |
+| README.md | updated | `searchRequestAction` payload field `ftsQuery` renamed to `query`; removed stale `personalDetailsAction` row |
+| EXAMPLES.md | updated | snippet "Dispatching a filter clear" corrected to match new `FilterStateService.clearFilters()` signature |
 | CHANGES.md | updated | new version entry appended |
 | package.json | updated | version bumped to YYYY.M.N |

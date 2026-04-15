@@ -9,7 +9,9 @@ export interface DecodedJwt {
   onCampus: boolean,
   signedIn: boolean,
   authenticationProfile: string,
-  user: string
+  user: string,
+  selfRegistered: boolean,
+  restrictedUser: boolean
 }
 
 export interface UserSettings {
