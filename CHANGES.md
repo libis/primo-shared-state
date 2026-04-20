@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026.5.1 -- prerelease
+
+### Added
+
+- **Analytics model — new `EventsNames` keys:** `TOPIC_OVERVIEW` (`'Topic Overview'`), `LEGANTO_COURSE_INFO` (`'Leganto Course Info'`), `EXPORT_ALL` (`'Export All'`)
+- **Search model — new `SearchData.facetsCacheKey?: number`** — host uses this to skip re-fetching facets when the cache is still valid
+- **Search model — new `ElectronicService.displayInEmbedViewer?: boolean`** — indicates the service can be shown in the embedded viewer
+- **Search model — new `SearchWithinJournalContext` interface** — `{ recordId: string; recordTitle: string }` used for journal search context
+- **View-config model — new `SystemConfiguration` fields:** `expand_results_toggles_visible: boolean`, `export_all_for_user_email_only: boolean`
+- **View-config model — new `MappingTables` entry:** `'Resource Sharing Additional Information': MappingTable[]`
+- **View-config model — new `ResultFullTileInterface.authorityitemview: Resultitemview[]`**
+- **Account model — new `PageType` type alias:** `'loans' | 'requests' | 'fines' | 'searchHistory' | 'savedSearches'`
+- **`loadFiltersAction` — added optional `facetsCacheKey?: number` prop** — allows callers to pass the cache key to the host's filter effect
+- **`FilterStateService.loadFilters()` — added optional `facetsCacheKey?: number` parameter**
+
+### Changed
+
+- `shared-actions.ts` header comment extended to document three new excluded actions: `triggerExportAllSendEmail` (downstream HTTP email effect), `patronDefaultSortUpdateAction` (downstream sort-save HTTP effect), `selectAllResourceTypeFilterAction` (downstream search-trigger effect)
+
+### Documentation
+
+- README.md: `EventsNames` count updated to ~53; `SearchData` table — added `facetsCacheKey` row; `ElectronicService` table — added `displayInEmbedViewer` row; `SystemConfiguration` section — added `expand_results_toggles_visible` and `export_all_for_user_email_only` fields table; `MappingTables` section — noted new `'Resource Sharing Additional Information'` entry; added `SearchWithinJournalContext` interface block; added `PageType` type block; `loadFiltersAction` props updated with `facetsCacheKey?`; `FilterStateService` dispatch helpers updated `loadFilters(params, facetsCacheKey?)`; version tarball references bumped to `2026.5.1`
+
 ## 2026.4.1 — 2026-04-15
 
 ### Added

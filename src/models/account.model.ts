@@ -313,6 +313,8 @@ export interface CounterListOfActions {
   action: CounterAction[];
 }
 
+export type PageType = 'loans' | 'requests' | 'fines' | 'searchHistory' | 'savedSearches';
+
 export const ActionTypes = {
   SideMenuNavigation: 'Side Menu Navigation',
   BoxNavigation: 'Box Navigation',

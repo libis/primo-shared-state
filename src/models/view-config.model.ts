@@ -209,6 +209,7 @@ export interface MappingTables {
   'May Also Be Found At':                                MappingTable[];
   'Authority Search Scopes':                             MappingTable[];
   'Authority Search Sort':                               MappingTable[];
+  'Resource Sharing Additional Information':             MappingTable[];
 }
 
 export interface MappingTable {
@@ -454,6 +455,8 @@ export interface SystemConfiguration {
   enable_search_inside_journal: boolean;
   display_register_button_by_restricted_user_groups: boolean;
   primo_loan_list_sorting: string;
+  expand_results_toggles_visible: boolean;
+  export_all_for_user_email_only: boolean;
 }
 
 export interface HideRapidoExpandLinkMap {
@@ -537,6 +540,7 @@ export interface Mainview {
 }
 
 export interface ResultFullTileInterface {
+  authorityitemview: Resultitemview[];
   eshelf: boolean;
   delimiter: string;
   getitbutton: boolean;

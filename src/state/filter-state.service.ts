@@ -157,8 +157,8 @@ export class FilterStateService {
 
   // ── Typed dispatch helpers ──────────────────────────────────────────────────
 
-  loadFilters(searchParams: SearchParams): void {
-    this.helper.dispatch(loadFiltersAction({ searchParams }));
+  loadFilters(searchParams: SearchParams, facetsCacheKey?: number): void {
+    this.helper.dispatch(loadFiltersAction({ searchParams, facetsCacheKey }));
   }
 
   updateSortByParam(sort: string): void {

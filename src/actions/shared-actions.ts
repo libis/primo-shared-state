@@ -27,6 +27,9 @@
  * - searchAndAppendAction — triggers HTTP for endless scroll
  * - All "done*" account actions that feed downstream effects
  * - Analytics send* actions — trigger analytics HTTP side-effects
+ * - triggerExportAllSendEmail — downstream effect fires HTTP email-send call
+ * - patronDefaultSortUpdateAction — downstream effect in search.effects.ts saves sort preference via HTTP
+ * - selectAllResourceTypeFilterAction — downstream effect in filter.effects.ts triggers a new search
  *
  * REMOVED IN 2026.4.1:
  * - fetchUnpaywallLinksAction — no longer exists in the host; the host
@@ -142,10 +145,10 @@ export const setIsResourceRecommenderExpandedAction = createAction(
 // Filter / search-filter actions
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** SAFE: Command to load filters for given search params. The host effect performs the HTTP call. */
+/** SAFE: Command to load filters for given search params. The host effect performs the HTTP call. Optional `facetsCacheKey` lets the host skip re-fetching facets when the cache is still valid. */
 export const loadFiltersAction = createAction(
   '[Filter] Load Filter',
-  props<{ searchParams: SearchParams }>()
+  props<{ searchParams: SearchParams; facetsCacheKey?: number }>()
 );
 
 /** SAFE: Terminal success action — reducer stores filters. No downstream effect listens. */

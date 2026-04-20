@@ -1,6 +1,6 @@
 {
   "name": "@libis/primo-shared-state",
-  "version": "2026.4.1",
+  "version": "2026.5.1",
   "description": "Shared state models and services for Primo module federation",
   "main": "dist/index.js",
   "module": "dist/index.js",

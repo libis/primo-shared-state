@@ -61,7 +61,10 @@ export const EventsNames = {
   BOOK_CHAPTERS_AND_REVIEWS: 'Book Chapters and Reviews',
   MAY_ALSO_BE_HELD_BY: 'May Also be Held by',
   SIMILAR_IMAGE_BROWSE: 'Similar Image Browse',
-  CITATION_LINKER: 'Citation Linker'
+  CITATION_LINKER: 'Citation Linker',
+  TOPIC_OVERVIEW: 'Topic Overview',
+  LEGANTO_COURSE_INFO: 'Leganto Course Info',
+  EXPORT_ALL: 'Export All'
 } as const;
 
 export const PageNames: IgnoreMapSimpleString = {

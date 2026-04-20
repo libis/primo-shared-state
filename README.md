@@ -11,7 +11,7 @@ Shared state models and Angular services for the Primo module-federation archite
 |---|---|
 | **Models** (`src/models/`) | TypeScript interfaces mirroring the host's state shapes: `SearchParams`, `Doc`, `UserState`, `FilterState`, `ViewConfigData`, `SystemConfiguration`, `EntityViewModel`, `accountViewModel`, `LoanItem`, `EventsNames`, `LoadingStatus`, … |
 | **Services** (`src/state/`) | Six `providedIn: 'root'` Angular services — `UserStateService`, `SearchStateService`, `FilterStateService` (read/write), `ViewConfigStateService`, `EntityStateService`, `AccountStateService` (read-only) — each offering Observable streams, one-shot Promise snapshots, Angular Signals, and typed dispatch helpers where appropriate |
-| **Actions** (`src/actions/`) | `shared-actions.ts` — 37 NgRx action creators whose `type` strings match the host's reducers **byte-for-byte** |
+| **Actions** (`src/actions/`) | `shared-actions.ts` — 37 NgRx action creators whose `type` strings match the host's reducers **byte-for-byte** (payload of `loadFiltersAction` extended in 2026.5.1) |
 | **Utility** (`src/utils/`) | `StateHelper` — thin wrapper around `Store` used internally by all services |
 
 ### Table of contents
@@ -88,7 +88,7 @@ npm run build
 
 # 3. Create a distributable tarball
 npm pack
-# → libis-primo-shared-state-2026.4.1.tgz
+# → libis-primo-shared-state-2026.5.1.tgz
 ```
 
 ---
@@ -99,14 +99,14 @@ npm pack
 
 ```bash
 npm pack
-cp libis-primo-shared-state-2026.4.1.tgz path/to/NDE_customModule/nde/
+cp libis-primo-shared-state-2026.5.1.tgz path/to/NDE_customModule/nde/
 ```
 
 ### Step 2 — add the `file:` dependency to the remote's `package.json`
 
 ```json
 "dependencies": {
-  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.4.1.tgz"
+  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.5.1.tgz"
 }
 ```
 
@@ -856,7 +856,7 @@ constructor() {
 | `isRememberAll()` | `Promise<boolean>` |
 
 #### Dispatch helpers
-`loadFilters(params)` · `updateSortByParam(s)` · `includeFilter(group, value, labels?)` · `excludeFilter(group, value, labels?)` · `applyMultiSelectFilters(filters)` · `clearAllFilters(params?)` · `selectResourceType(model)` · `setFiltersOpen(b)` · `setRememberAll(b)` · `dispatch(action)`
+`loadFilters(params, facetsCacheKey?)` · `updateSortByParam(s)` · `includeFilter(group, value, labels?)` · `excludeFilter(group, value, labels?)` · `applyMultiSelectFilters(filters)` · `clearAllFilters(params?)` · `selectResourceType(model)` · `setFiltersOpen(b)` · `setRememberAll(b)` · `dispatch(action)`
 
 ---
 
@@ -1189,6 +1189,7 @@ type SearchParamsWithStrParams = Omit<SearchParams, 'qInclude' | 'qExclude' | 'm
 | `highlights` | `Highlights` | Highlighted term fragments |
 | `docs` | `Doc[]` | Array of result documents |
 | `facets` | `Facet[]?` | Available facet groups |
+| `facetsCacheKey` | `number?` | Cache key — host uses this to skip re-fetching facets *(new in 2026.5.1)* |
 | `timelog` | `Timelog` | Server-side performance timings |
 | `did_u_mean` | `string?` | Spelling suggestion |
 | `expandedSearchAfterZeroResults` | `boolean?` | Search was expanded due to zero results |
@@ -1487,6 +1488,7 @@ One electronic access option (full text, open access, etc.).
 | `contextServiceId` | `string?` |
 | `publicAccessModel` | `string?` |
 | `representationViewerServiceCode` | `string?` |
+| `displayInEmbedViewer` | `boolean?` *(new in 2026.5.1)* |
 | `fromNetwork` | `boolean?` |
 | `filteredByAfGroups` | `string?` |
 | `supported` | `boolean?` |
@@ -1939,6 +1941,17 @@ interface SearchWithinJournal {
 }
 ```
 
+#### `SearchWithinJournalContext`
+
+*New in 2026.5.1 — context for a journal search triggered from a full-display record.*
+
+```typescript
+interface SearchWithinJournalContext {
+  recordId: string;
+  recordTitle: string;
+}
+```
+
 #### `SystemConfiguration`
 
 ~140+ properties controlling search behaviour, display settings, and institutional policies. See the source file for the full list. Fields added in 2026.4.1:
@@ -1949,9 +1962,16 @@ interface SearchWithinJournal {
 | `display_register_button_by_restricted_user_groups` | `boolean` |
 | `primo_loan_list_sorting` | `string` |
 
+Fields added in 2026.5.1:
+
+| Field | Type |
+|---|---|
+| `expand_results_toggles_visible` | `boolean` |
+| `export_all_for_user_email_only` | `boolean` |
+
 #### `MappingTables`
 
-~50+ mapping tables used by the host for display transformations (resource types, icons, labels, etc.).
+~50+ mapping tables used by the host for display transformations (resource types, icons, labels, etc.). Added in 2026.5.1: `'Resource Sharing Additional Information': MappingTable[]`.
 
 #### `PrimoView`
 
@@ -2156,6 +2176,14 @@ View-model for fines with `fineId`, `fineDate`, `title`, `sumToDisplay`, `fineTy
 
 Extends `SavedSearchInterface` and `MapSearchParams` with `itemType` and `title`.
 
+#### `PageType`
+
+*New in 2026.5.1.*
+
+```typescript
+type PageType = 'loans' | 'requests' | 'fines' | 'searchHistory' | 'savedSearches';
+```
+
 > **Excluded from this package:** `RequestOptions`, `NestedRequestOptions` (enable ILS mutation path), `PersonalDetailsInfo` (carries editable personal data). These must remain host-only.
 
 ---
@@ -2166,7 +2194,7 @@ Defined in `src/models/analytics.model.ts`. Const maps for consistent analytics 
 
 #### `EventsNames`
 
-Const object mapping ~50 event names, e.g.:
+Const object mapping ~53 event names (added in 2026.5.1: `TOPIC_OVERVIEW`, `LEGANTO_COURSE_INFO`, `EXPORT_ALL`), e.g.:
 
 ```typescript
 import { EventsNames } from '@libis/primo-shared-state';
@@ -2230,7 +2258,7 @@ import { searchAction, loadFiltersAction, setDecodedJwt } from '@libis/primo-sha
 
 | Creator | Action type | Props |
 |---|---|---|
-| `loadFiltersAction` | `[Filter] Load Filter` | `{ searchParams: SearchParams }` |
+| `loadFiltersAction` | `[Filter] Load Filter` | `{ searchParams: SearchParams; facetsCacheKey?: number }` *(facetsCacheKey new in 2026.5.1)* |
 | `filtersSuccessAction` | `[Filter] Load Filter Success` | `{ filters: Facet[] }` |
 | `filterFailedAction` | `[Filter] Load Filter Failed` | — |
 | `updateSortByParam` | `[Filter] Update Sort By Param` | `{ sort: string }` |
@@ -2292,7 +2320,7 @@ This package uses `YYYY.M.regenerateCount` versioning (e.g. `2026.4.1`):
 # After regenerating, build and pack:
 npm run build
 npm pack
-# → libis-primo-shared-state-2026.4.1.tgz
+# → libis-primo-shared-state-2026.5.1.tgz
 ```
 
 ## Regenerating this package

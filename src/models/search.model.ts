@@ -63,6 +63,7 @@ export interface SearchData {
   highlights: Highlights;
   docs:       Doc[];
   facets?:    Facet[];
+  facetsCacheKey?: number;
   timelog:    Timelog;
   did_u_mean?:  string;
   expandedSearchAfterZeroResults?: boolean;
@@ -198,6 +199,7 @@ export interface ElectronicService {
   contextServiceId? : string
   publicAccessModel?: string
   representationViewerServiceCode?: string
+  displayInEmbedViewer?: boolean;
   fromNetwork?: boolean;
   filteredByAfGroups?: string;
   supported?: boolean;
@@ -560,4 +562,9 @@ export interface TopBarSelectedFilter {
   value: string;
   filterType?: string;
   mergedLabel?: string[] | undefined;
+}
+
+export interface SearchWithinJournalContext {
+  recordId: string;
+  recordTitle: string;
 }
