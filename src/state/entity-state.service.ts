@@ -8,6 +8,7 @@ import {
   RelatedEntitiesMultiLangDataList,
 } from '../models/entity.model';
 import { LoadingStatus } from '../models/state.const';
+import { AppState } from '../models/store.model';
 import { StateHelper } from '../utils/state-helper';
 
 /**
@@ -38,114 +39,114 @@ export class EntityStateService {
   // ── Observable API ────────────────────────────────────────────────────────
 
   selectEntityId$(): Observable<string | undefined> {
-    return this.helper.select$((state: any) => state['linked-data-entity']?.entityId);
+    return this.helper.select$((state: AppState) => state['linked-data-entity']?.entityId);
   }
 
   selectEntity$(): Observable<EntityMultiLangData | undefined> {
-    return this.helper.select$((state: any) => state['linked-data-entity']?.entity);
+    return this.helper.select$((state: AppState) => state['linked-data-entity']?.entity);
   }
 
   selectEntityStatus$(): Observable<LoadingStatus | undefined> {
-    return this.helper.select$((state: any) => state['linked-data-entity']?.entityStatus);
+    return this.helper.select$((state: AppState) => state['linked-data-entity']?.entityStatus);
   }
 
   selectWikiData$(): Observable<EntityWikiData | undefined> {
-    return this.helper.select$((state: any) => state['linked-data-entity']?.wikiData);
+    return this.helper.select$((state: AppState) => state['linked-data-entity']?.wikiData);
   }
 
   selectWikiDataStatus$(): Observable<LoadingStatus | undefined> {
-    return this.helper.select$((state: any) => state['linked-data-entity']?.wikiDataStatus);
+    return this.helper.select$((state: AppState) => state['linked-data-entity']?.wikiDataStatus);
   }
 
   selectRelatedDocs$(): Observable<RelatedDocList[] | undefined> {
-    return this.helper.select$((state: any) => state['linked-data-entity']?.relatedDocs);
+    return this.helper.select$((state: AppState) => state['linked-data-entity']?.relatedDocs);
   }
 
   selectRelatedDocsStatus$(): Observable<LoadingStatus | undefined> {
-    return this.helper.select$((state: any) => state['linked-data-entity']?.relatedDocsStatus);
+    return this.helper.select$((state: AppState) => state['linked-data-entity']?.relatedDocsStatus);
   }
 
   selectRelatedEntities$(): Observable<RelatedEntitiesMultiLangDataList[] | undefined> {
-    return this.helper.select$((state: any) => state['linked-data-entity']?.relatedEntities);
+    return this.helper.select$((state: AppState) => state['linked-data-entity']?.relatedEntities);
   }
 
   selectRelatedEntitiesStatus$(): Observable<LoadingStatus | undefined> {
-    return this.helper.select$((state: any) => state['linked-data-entity']?.relatedEntitiesStatus);
+    return this.helper.select$((state: AppState) => state['linked-data-entity']?.relatedEntitiesStatus);
   }
 
   // ── Promise API (snapshots) ───────────────────────────────────────────────
 
   async getEntityId(): Promise<string | undefined> {
-    return this.helper.selectOnce((state: any) => state['linked-data-entity']?.entityId);
+    return this.helper.selectOnce((state: AppState) => state['linked-data-entity']?.entityId);
   }
 
   async getEntity(): Promise<EntityMultiLangData | undefined> {
-    return this.helper.selectOnce((state: any) => state['linked-data-entity']?.entity);
+    return this.helper.selectOnce((state: AppState) => state['linked-data-entity']?.entity);
   }
 
   async getEntityStatus(): Promise<LoadingStatus | undefined> {
-    return this.helper.selectOnce((state: any) => state['linked-data-entity']?.entityStatus);
+    return this.helper.selectOnce((state: AppState) => state['linked-data-entity']?.entityStatus);
   }
 
   async getRelatedDocs(): Promise<RelatedDocList[] | undefined> {
-    return this.helper.selectOnce((state: any) => state['linked-data-entity']?.relatedDocs);
+    return this.helper.selectOnce((state: AppState) => state['linked-data-entity']?.relatedDocs);
   }
 
   async getRelatedEntities(): Promise<RelatedEntitiesMultiLangDataList[] | undefined> {
-    return this.helper.selectOnce((state: any) => state['linked-data-entity']?.relatedEntities);
+    return this.helper.selectOnce((state: AppState) => state['linked-data-entity']?.relatedEntities);
   }
 
   async getWikiData(): Promise<EntityWikiData | undefined> {
-    return this.helper.selectOnce((state: any) => state['linked-data-entity']?.wikiData);
+    return this.helper.selectOnce((state: AppState) => state['linked-data-entity']?.wikiData);
   }
 
   async getWikiDataStatus(): Promise<LoadingStatus | undefined> {
-    return this.helper.selectOnce((state: any) => state['linked-data-entity']?.wikiDataStatus);
+    return this.helper.selectOnce((state: AppState) => state['linked-data-entity']?.wikiDataStatus);
   }
 
   async getRelatedDocsStatus(): Promise<LoadingStatus | undefined> {
-    return this.helper.selectOnce((state: any) => state['linked-data-entity']?.relatedDocsStatus);
+    return this.helper.selectOnce((state: AppState) => state['linked-data-entity']?.relatedDocsStatus);
   }
 
   async getRelatedEntitiesStatus(): Promise<LoadingStatus | undefined> {
-    return this.helper.selectOnce((state: any) => state['linked-data-entity']?.relatedEntitiesStatus);
+    return this.helper.selectOnce((state: AppState) => state['linked-data-entity']?.relatedEntitiesStatus);
   }
 
   // ── Signal API ────────────────────────────────────────────────────────────
 
   entityIdSignal(): Signal<string | undefined> {
-    return this.helper.selectSignal((state: any) => state['linked-data-entity']?.entityId, undefined);
+    return this.helper.selectSignal((state: AppState) => state['linked-data-entity']?.entityId, undefined);
   }
 
   entitySignal(): Signal<EntityMultiLangData | undefined> {
-    return this.helper.selectSignal((state: any) => state['linked-data-entity']?.entity, undefined);
+    return this.helper.selectSignal((state: AppState) => state['linked-data-entity']?.entity, undefined);
   }
 
   entityStatusSignal(): Signal<LoadingStatus | undefined> {
-    return this.helper.selectSignal((state: any) => state['linked-data-entity']?.entityStatus, undefined);
+    return this.helper.selectSignal((state: AppState) => state['linked-data-entity']?.entityStatus, undefined);
   }
 
   wikiDataSignal(): Signal<EntityWikiData | undefined> {
-    return this.helper.selectSignal((state: any) => state['linked-data-entity']?.wikiData, undefined);
+    return this.helper.selectSignal((state: AppState) => state['linked-data-entity']?.wikiData, undefined);
   }
 
   relatedDocsSignal(): Signal<RelatedDocList[] | undefined> {
-    return this.helper.selectSignal((state: any) => state['linked-data-entity']?.relatedDocs, undefined);
+    return this.helper.selectSignal((state: AppState) => state['linked-data-entity']?.relatedDocs, undefined);
   }
 
   relatedEntitiesSignal(): Signal<RelatedEntitiesMultiLangDataList[] | undefined> {
-    return this.helper.selectSignal((state: any) => state['linked-data-entity']?.relatedEntities, undefined);
+    return this.helper.selectSignal((state: AppState) => state['linked-data-entity']?.relatedEntities, undefined);
   }
 
   wikiDataStatusSignal(): Signal<LoadingStatus | undefined> {
-    return this.helper.selectSignal((state: any) => state['linked-data-entity']?.wikiDataStatus, undefined);
+    return this.helper.selectSignal((state: AppState) => state['linked-data-entity']?.wikiDataStatus, undefined);
   }
 
   relatedDocsStatusSignal(): Signal<LoadingStatus | undefined> {
-    return this.helper.selectSignal((state: any) => state['linked-data-entity']?.relatedDocsStatus, undefined);
+    return this.helper.selectSignal((state: AppState) => state['linked-data-entity']?.relatedDocsStatus, undefined);
   }
 
   relatedEntitiesStatusSignal(): Signal<LoadingStatus | undefined> {
-    return this.helper.selectSignal((state: any) => state['linked-data-entity']?.relatedEntitiesStatus, undefined);
+    return this.helper.selectSignal((state: AppState) => state['linked-data-entity']?.relatedEntitiesStatus, undefined);
   }
 }

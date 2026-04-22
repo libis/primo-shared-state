@@ -88,7 +88,7 @@ npm run build
 
 # 3. Create a distributable tarball
 npm pack
-# → libis-primo-shared-state-2026.5.1.tgz
+# → libis-primo-shared-state-2026.5.2.tgz
 ```
 
 ---
@@ -99,14 +99,14 @@ npm pack
 
 ```bash
 npm pack
-cp libis-primo-shared-state-2026.5.1.tgz path/to/NDE_customModule/nde/
+cp libis-primo-shared-state-2026.5.2.tgz path/to/NDE_customModule/nde/
 ```
 
 ### Step 2 — add the `file:` dependency to the remote's `package.json`
 
 ```json
 "dependencies": {
-  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.5.1.tgz"
+  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.5.2.tgz"
 }
 ```
 
@@ -199,6 +199,22 @@ No changes to the host's `webpack.config.js` are needed or possible — the host
 ---
 
 ## Usage
+
+### Typed store access
+
+Every selector callback in the six `*StateService` classes is typed against `AppState` — the root NgRx store shape, exported from this package. A typo in a feature-key (`state.Serach.entities`) or a renamed field is now a compile-time `tsc` error, not a silent runtime `undefined`.
+
+Consumer remotes that need to write hand-rolled selectors against the store can import `AppState` directly:
+
+```typescript
+import { AppState } from '@libis/primo-shared-state';
+import { Store } from '@ngrx/store';
+
+// Fully typed — autocomplete on slice names, field names, everything
+store.select((state: AppState) => state.Search.searchResultsMetaData?.info?.total);
+```
+
+Six slices are fully typed (`Search`, `user`, `filters`, `account`, `viewConfig`, `linked-data-entity`); the other 23 are declared as opaque `Record<string, unknown>` — they type-check at the slice-access level but you'll need to narrow field reads yourself. Feature-key casing in `AppState` mirrors each reducer's `StoreModule.forFeature(...)` registration verbatim (mixed PascalCase `Search`, camelCase `viewConfig`, kebab-case `linked-data-entity`, lowercase `user`) — selectors must match the exact runtime key.
 
 ### Observable API (reactive)
 
@@ -2320,7 +2336,7 @@ This package uses `YYYY.M.regenerateCount` versioning (e.g. `2026.4.1`):
 # After regenerating, build and pack:
 npm run build
 npm pack
-# → libis-primo-shared-state-2026.5.1.tgz
+# → libis-primo-shared-state-2026.5.2.tgz
 ```
 
 ## Regenerating this package

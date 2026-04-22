@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026.5.2 -- prerelease
+
+### Added
+
+- **`src/models/store.model.ts`** — new file exporting `AppState` (the root NgRx store shape) plus slice state interfaces keyed by each reducer's exact feature-key string. Six slices consumed by the services in this package (`Search`, `user`, `filters`, `account`, `viewConfig`, `linked-data-entity`) are fully typed; the remaining 23 slices are declared as opaque `Record<string, unknown>` so `AppState` stays complete without pulling host-internal field types into the public API.
+- **`AppState` re-exported from the package barrel** (`src/index.ts`) so consumer remotes can write their own typed selectors.
+
+### Changed
+
+- **`StateHelper` selector methods are now generic over `AppState`.** `select$`, `selectOnce`, and `selectSignal` signatures changed from `selector: any` to `selector: (state: AppState) => T`. The internal `Store` is cast to `Store<AppState>` so `store.select(selector)` type-checks.
+- **All six state services retyped** (`search-state`, `user-state`, `filter-state`, `account-state`, `view-config-state`, `entity-state`). Every `(state: any) => state.Foo?.bar` selector callback now reads `(state: AppState) => state.Foo?.bar` and is fully type-checked at compile time — a typo in a feature-key string or a renamed field is now a `tsc` error instead of a silent runtime `undefined`.
+- `AccountState` status fields (`loansStatus`, `requestsStatus`, `finesStatus`, `savedSearchesStatus`, `searchHistoryStatus`) are typed as `LoadingStatus` (not `string`) so service selectors returning `Observable<LoadingStatus | undefined>` type-check correctly.
+- `package.json` — added `@ngrx/entity ^19.0.0` as a peer dependency (already transitively required — now declared explicitly because `SearchState extends EntityState<Doc>` is part of the public surface).
+
+### Documentation
+
+- README.md — new "Typed store access" subsection noting that `AppState` is exported and selector callbacks are fully typed.
+
 ## 2026.5.1 -- prerelease
 
 ### Added

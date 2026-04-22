@@ -7,6 +7,7 @@ export * from './models/analytics.model';
 export * from './models/entity.model';
 export * from './models/view-config.model';
 export * from './models/account.model';
+export * from './models/store.model';
 
 // State Services
 export * from './state/user-state.service';

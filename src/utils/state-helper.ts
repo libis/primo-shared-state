@@ -3,29 +3,34 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { take } from 'rxjs/operators';
+import { AppState } from '../models/store.model';
 
 /**
  * Helper class for reading and writing to NgRx store
  * Provides type-safe methods for interacting with the shared state
  */
 export class StateHelper {
-  constructor(private store: Store) {}
+  private store: Store<AppState>;
+
+  constructor(store: Store) {
+    this.store = store as Store<AppState>;
+  }
 
   /**
    * Select data from the store using a selector
-   * @param selector - NgRx selector function
+   * @param selector - Selector function typed against AppState
    * @returns Observable of the selected state
    */
-  select$<T>(selector: any): Observable<T> {
+  select$<T>(selector: (state: AppState) => T): Observable<T> {
     return this.store.select(selector);
   }
 
   /**
    * Get a snapshot of the current state value (one-time read)
-   * @param selector - NgRx selector function
+   * @param selector - Selector function typed against AppState
    * @returns Promise resolving to the current state value
    */
-  async selectOnce<T>(selector: any): Promise<T> {
+  async selectOnce<T>(selector: (state: AppState) => T): Promise<T> {
     return this.store.select(selector).pipe(take(1)).toPromise() as Promise<T>;
   }
 
@@ -45,7 +50,7 @@ export class StateHelper {
     actions.forEach(action => this.store.dispatch(action));
   }
 
-  selectSignal<T>(selector: any, initialValue: T): Signal<T> {
+  selectSignal<T>(selector: (state: AppState) => T, initialValue: T): Signal<T> {
     return toSignal(this.select$<T>(selector), { initialValue });
   }
 }

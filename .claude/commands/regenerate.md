@@ -123,6 +123,32 @@ In **Scenario B**, after applying additions/changes to `src/state/*.ts`, re-read
 
 ---
 
+## Slice state interfaces and AppState
+
+Every selector callback in this package must be typed against the real store shape — never `(state: any) => …`. A typo in a feature-key string or a renamed field has to be a compile-time `tsc` error, not a silent runtime `undefined`.
+
+The package emits `src/models/store.model.ts` containing:
+
+- One `FooState` interface per NgRx slice registered in the decompiled host source (pulled verbatim from each reducer's state interface, e.g. `search.reducer.ts` → `SearchState`).
+- A root `AppState` interface keyed by each reducer's **exact feature-key string** — the literal argument each reducer passes to `StoreModule.forFeature(...)` (or the feature-name constant at the top of the reducer).
+
+### Rules
+
+- ✅ **Feature-key casing is preserved verbatim.** The Primo host uses a mix of PascalCase (`Search`, `Delivery`), camelCase (`viewConfig`, `bulkActions`, `collectionDiscovery`, `routerState`), kebab-case (`authority-search`, `browse-search`, `citation-trails`, `database-search`, `full-display`, `journal-search`, `linked-data-entity`, `natural-language-search`, `newspaper-search`, `ngrs-general`, `ngrs-record-data`, `research-assistant`), and lowercase (`account`, `atoz`, `categories`, `citations`, `favorites`, `filters`, `frbr`, `language`, `resourceRecommender`, `router`, `user`). **Do not normalise these** — selectors must match the exact runtime key or they return `undefined`.
+- ✅ **Full interfaces for consumed slices.** Slices actively read by any `*StateService` in this package get full interface declarations (field names + types pulled from the host reducer). For `EntityState<T>`-backed slices (`Search`, `Delivery`, `favorites`, `authority-search`, `ngrs-record-data`), keep the `extends EntityState<X>` clause so `entities[id]` indexing type-checks.
+- ✅ **Opaque stubs for unused slices.** Slices that no service in this package targets are declared as `Record<string, unknown>` aliases (e.g. `export type AtozState = Record<string, unknown>;`). This keeps `AppState` complete without forcing this package to re-declare every host-internal field type (`IPhysicalServices`, `PersonalInfoData`, `TreeNode`, `PickupInformationContainer`, `Collection`, …). When a future service targets a stubbed slice, replace the alias with the full interface, pulling in only the field types that service reads.
+- ✅ **Selector callbacks use `AppState`.** In every `*StateService`, selector callbacks read `(state: AppState) => state.Foo?.bar` — never `state: any`. `StateHelper.select$` / `selectOnce` / `selectSignal` are generic over `(state: AppState) => T` and the internal `Store` is typed as `Store<AppState>`.
+- ✅ **Barrel-export `AppState`.** `src/index.ts` re-exports the `store.model.ts` file so consuming remotes can write their own typed selectors against `AppState`.
+- ❌ **Never re-introduce `state: any`.** If a selector cannot be typed (unusual slice access, runtime key indexing), narrow the cast explicitly at the call site (`(state.foo as FooState).bar`) — do not widen the callback parameter.
+
+### Audit during updates
+
+In **Scenario B**, when the decompiled source adds a new slice, renames a feature-key, or changes a field type on a consumed slice, regenerate `store.model.ts` in the same pass as the service update. Slice additions are not breaking; feature-key renames and field removals on consumed slices follow the existing `⚠️ BREAKING REMOVAL` protocol (list every service method and exported symbol affected, get explicit user confirmation). Field additions to a consumed slice are a simple `### Added` entry.
+
+Include `store.model.ts` in the Scenario A generate-from-scratch bullet list and in the Scenario B compare-and-update list.
+
+---
+
 ## Documentation verification — README.md and EXAMPLES.md
 
 The package ships with two user-facing documentation files that must stay in lock-step with the regenerated `src/`:
@@ -161,7 +187,7 @@ Add a `### Documentation` subsection to the new version entry listing doc-only c
 
 1. Analyse the decompiled source. Identify all NgRx state slices, reducers, effects, and action creators.
 2. Generate the full package:
-   - `src/models/` — TypeScript interfaces for every relevant state shape. Include read-only model interfaces per the **read-only model access** rules above.
+   - `src/models/` — TypeScript interfaces for every relevant state shape. Include read-only model interfaces per the **read-only model access** rules above. Include `store.model.ts` (slice state interfaces + `AppState` root) per the **Slice state interfaces and AppState** rules above.
    - `src/actions/shared-actions.ts` — apply the safety rules above.
    - `src/state/` — one service per state slice (`UserStateService`, `SearchStateService`, `FilterStateService`, `ViewConfigStateService`, `EntityStateService`, `AccountStateService`). Every selector must be exposed in all three forms (Observable `selectFoo$()`, Signal `fooSignal()`, Promise `getFoo()` / `isFoo()`) per the **State service API symmetry** rules above. Services for read-only slices expose only selectors (no `dispatch()`); services that own writable slices additionally expose typed dispatch helpers.
    - `src/utils/StateHelper` — thin `Store` wrapper used internally by the services.
@@ -175,9 +201,9 @@ Add a `### Documentation` subsection to the new version entry listing doc-only c
 ## Scenario B — `src/` already contains code: update the existing package
 
 1. Compare the decompiled source against the current package. Identify:
-   - **New** actions, state slices, model fields, or read-only model interfaces → add them (applying the read-only model access rules).
-   - **Changed** action type strings, payload shapes, reducer behaviour, or read-only model shapes → update them.
-   - **Removed** actions, state slices, or read-only models → **do not silently delete**. For each removal:
+   - **New** actions, state slices, model fields, slice state interfaces, or read-only model interfaces → add them (applying the read-only model access rules and the **Slice state interfaces and AppState** rules — regenerate `src/models/store.model.ts` in the same pass).
+   - **Changed** action type strings, payload shapes, reducer behaviour, feature-key strings, slice field types, or read-only model shapes → update them.
+   - **Removed** actions, state slices, read-only models, or fields on consumed slices in `store.model.ts` → **do not silently delete**. For each removal:
      - Emit a clearly visible `⚠️ BREAKING REMOVAL` warning.
      - List every exported symbol that would be deleted and what consuming code would break.
      - Ask the user for explicit confirmation before removing anything currently exported.

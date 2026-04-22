@@ -2,6 +2,7 @@ import { Injectable, Signal } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { FilterState, selectedFilters, MultiSelectedFilter, ResourceTypeFilterModel } from '../models/filter.model';
+import { AppState } from '../models/store.model';
 import { StateHelper } from '../utils/state-helper';
 import { SearchParams } from '../models/search.model';
 import {
@@ -35,86 +36,86 @@ export class FilterStateService {
    * Select the entire filter state
    */
   selectFilterState$(): Observable<FilterState> {
-    return this.helper.select$((state: any) => state.filters);
+    return this.helper.select$((state: AppState) => state.filters);
   }
 
   /**
    * Select included filters
    */
   selectIncludedFilters$(): Observable<selectedFilters[] | null> {
-    return this.helper.select$((state: any) => state.filters?.includedFilter);
+    return this.helper.select$((state: AppState) => state.filters?.includedFilter);
   }
 
   /**
    * Select excluded filters
    */
   selectExcludedFilters$(): Observable<selectedFilters[] | null> {
-    return this.helper.select$((state: any) => state.filters?.excludedFilter);
+    return this.helper.select$((state: AppState) => state.filters?.excludedFilter);
   }
 
   /**
    * Select multi-selected filters
    */
   selectMultiSelectedFilters$(): Observable<MultiSelectedFilter[] | null> {
-    return this.helper.select$((state: any) => state.filters?.multiSelectedFilter);
+    return this.helper.select$((state: AppState) => state.filters?.multiSelectedFilter);
   }
 
   /**
    * Select resource type filter
    */
   selectResourceTypeFilter$(): Observable<ResourceTypeFilterModel | null> {
-    return this.helper.select$((state: any) => state.filters?.resourceTypeFilter);
+    return this.helper.select$((state: AppState) => state.filters?.resourceTypeFilter);
   }
 
   /**
    * Select if filters panel is open
    */
   selectIsFiltersOpen$(): Observable<boolean> {
-    return this.helper.select$((state: any) => state.filters?.isFiltersOpen || false);
+    return this.helper.select$((state: AppState) => state.filters?.isFiltersOpen || false);
   }
 
   /**
    * Select if "Remember All" is enabled
    */
   selectIsRememberAll$(): Observable<boolean> {
-    return this.helper.select$((state: any) => state.filters?.isRememberAll || false);
+    return this.helper.select$((state: AppState) => state.filters?.isRememberAll || false);
   }
 
   /**
    * Get included filters once (snapshot)
    */
   async getIncludedFilters(): Promise<selectedFilters[] | null> {
-    return this.helper.selectOnce((state: any) => state.filters?.includedFilter);
+    return this.helper.selectOnce((state: AppState) => state.filters?.includedFilter);
   }
 
   /**
    * Get excluded filters once (snapshot)
    */
   async getExcludedFilters(): Promise<selectedFilters[] | null> {
-    return this.helper.selectOnce((state: any) => state.filters?.excludedFilter);
+    return this.helper.selectOnce((state: AppState) => state.filters?.excludedFilter);
   }
 
   /**
    * Get multi-selected filters once (snapshot)
    */
   async getMultiSelectedFilters(): Promise<MultiSelectedFilter[] | null> {
-    return this.helper.selectOnce((state: any) => state.filters?.multiSelectedFilter);
+    return this.helper.selectOnce((state: AppState) => state.filters?.multiSelectedFilter);
   }
 
   async getFilterState(): Promise<FilterState> {
-    return this.helper.selectOnce((state: any) => state.filters);
+    return this.helper.selectOnce((state: AppState) => state.filters);
   }
 
   async getResourceTypeFilter(): Promise<ResourceTypeFilterModel | null> {
-    return this.helper.selectOnce((state: any) => state.filters?.resourceTypeFilter);
+    return this.helper.selectOnce((state: AppState) => state.filters?.resourceTypeFilter);
   }
 
   async isFiltersOpen(): Promise<boolean> {
-    return this.helper.selectOnce((state: any) => state.filters?.isFiltersOpen || false);
+    return this.helper.selectOnce((state: AppState) => state.filters?.isFiltersOpen || false);
   }
 
   async isRememberAll(): Promise<boolean> {
-    return this.helper.selectOnce((state: any) => state.filters?.isRememberAll || false);
+    return this.helper.selectOnce((state: AppState) => state.filters?.isRememberAll || false);
   }
 
   /**
@@ -128,31 +129,31 @@ export class FilterStateService {
   // ── Signal API ──────────────────────────────────────────────────────────────
 
   filterStateSignal(): Signal<FilterState> {
-    return this.helper.selectSignal((state: any) => state.filters, {} as FilterState);
+    return this.helper.selectSignal((state: AppState) => state.filters, {} as FilterState);
   }
 
   includedFiltersSignal(): Signal<selectedFilters[] | null> {
-    return this.helper.selectSignal((state: any) => state.filters?.includedFilter, null);
+    return this.helper.selectSignal((state: AppState) => state.filters?.includedFilter, null);
   }
 
   excludedFiltersSignal(): Signal<selectedFilters[] | null> {
-    return this.helper.selectSignal((state: any) => state.filters?.excludedFilter, null);
+    return this.helper.selectSignal((state: AppState) => state.filters?.excludedFilter, null);
   }
 
   multiSelectedFiltersSignal(): Signal<MultiSelectedFilter[] | null> {
-    return this.helper.selectSignal((state: any) => state.filters?.multiSelectedFilter, null);
+    return this.helper.selectSignal((state: AppState) => state.filters?.multiSelectedFilter, null);
   }
 
   resourceTypeFilterSignal(): Signal<ResourceTypeFilterModel | null> {
-    return this.helper.selectSignal((state: any) => state.filters?.resourceTypeFilter, null);
+    return this.helper.selectSignal((state: AppState) => state.filters?.resourceTypeFilter, null);
   }
 
   isFiltersOpenSignal(): Signal<boolean> {
-    return this.helper.selectSignal((state: any) => state.filters?.isFiltersOpen || false, false);
+    return this.helper.selectSignal((state: AppState) => state.filters?.isFiltersOpen || false, false);
   }
 
   isRememberAllSignal(): Signal<boolean> {
-    return this.helper.selectSignal((state: any) => state.filters?.isRememberAll || false, false);
+    return this.helper.selectSignal((state: AppState) => state.filters?.isRememberAll || false, false);
   }
 
   // ── Typed dispatch helpers ──────────────────────────────────────────────────

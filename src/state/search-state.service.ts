@@ -3,6 +3,7 @@ import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { Doc, SearchParams, SearchMetaData } from '../models/search.model';
 import { LoadingStatus } from '../models/state.const';
+import { AppState } from '../models/store.model';
 import { StateHelper } from '../utils/state-helper';
 import {
   clearSearchAction,
@@ -38,7 +39,7 @@ export class SearchStateService {
    * Select all search results (documents)
    */
   selectAllDocs$(): Observable<Doc[]> {
-    return this.helper.select$((state: any) => {
+    return this.helper.select$((state: AppState) => {
       const searchState = state.Search;
       if (!searchState?.entities) return [];
       return Object.values(searchState.entities).filter((doc): doc is Doc => doc !== undefined);
@@ -49,88 +50,88 @@ export class SearchStateService {
    * Select a specific document by ID
    */
   selectDocById$(id: string): Observable<Doc | undefined> {
-    return this.helper.select$((state: any) => state.Search?.entities?.[id]);
+    return this.helper.select$((state: AppState) => state.Search?.entities?.[id]);
   }
 
   /**
    * Select search parameters
    */
   selectSearchParams$(): Observable<SearchParams | null> {
-    return this.helper.select$((state: any) => state.Search?.searchParams);
+    return this.helper.select$((state: AppState) => state.Search?.searchParams);
   }
 
   /**
    * Select search metadata (info, facets, etc.)
    */
   selectSearchMetaData$(): Observable<SearchMetaData | null> {
-    return this.helper.select$((state: any) => state.Search?.searchResultsMetaData);
+    return this.helper.select$((state: AppState) => state.Search?.searchResultsMetaData);
   }
 
   /**
    * Select search loading status
    */
   selectSearchStatus$(): Observable<LoadingStatus> {
-    return this.helper.select$((state: any) => state.Search?.status || 'pending');
+    return this.helper.select$((state: AppState) => state.Search?.status || 'pending');
   }
 
   /**
    * Select total number of results
    */
   selectTotalResults$(): Observable<number> {
-    return this.helper.select$((state: any) => state.Search?.searchResultsMetaData?.info?.total || 0);
+    return this.helper.select$((state: AppState) => state.Search?.searchResultsMetaData?.info?.total || 0);
   }
 
   /**
    * Select selected page size
    */
   selectPageSize$(): Observable<number | null> {
-    return this.helper.select$((state: any) => state.Search?.selectedPageSize);
+    return this.helper.select$((state: AppState) => state.Search?.selectedPageSize);
   }
 
   /**
    * Check if search is loading
    */
   selectIsLoading$(): Observable<boolean> {
-    return this.helper.select$((state: any) => state.Search?.status === 'loading');
+    return this.helper.select$((state: AppState) => state.Search?.status === 'loading');
   }
 
   selectSearchNotificationMsg$(): Observable<string> {
-    return this.helper.select$((state: any) => state.Search?.searchNotificationMsg || '');
+    return this.helper.select$((state: AppState) => state.Search?.searchNotificationMsg || '');
   }
 
   selectPcAvailabilityToggleValue$(): Observable<boolean> {
-    return this.helper.select$((state: any) => state.Search?.pcAvailabilityToggleValue || false);
+    return this.helper.select$((state: AppState) => state.Search?.pcAvailabilityToggleValue || false);
   }
 
   selectSearchInFullTextToggleValue$(): Observable<boolean> {
-    return this.helper.select$((state: any) => state.Search?.searchInFullTextToggleValue || false);
+    return this.helper.select$((state: AppState) => state.Search?.searchInFullTextToggleValue || false);
   }
 
   selectIsSnackBarOpen$(): Observable<boolean> {
-    return this.helper.select$((state: any) => state.Search?.isSnackBarOpen || false);
+    return this.helper.select$((state: AppState) => state.Search?.isSnackBarOpen || false);
   }
 
   selectDisplaySummary$(): Observable<boolean> {
-    return this.helper.select$((state: any) => state.Search?.displaySummary || false);
+    return this.helper.select$((state: AppState) => state.Search?.displaySummary || false);
   }
 
   selectIsReportAProblemOpen$(): Observable<boolean> {
-    return this.helper.select$((state: any) => state.Search?.isReportAProblemOpen || false);
+    return this.helper.select$((state: AppState) => state.Search?.isReportAProblemOpen || false);
   }
 
   selectCurrentSearchTerm$(): Observable<string | undefined> {
-    return this.helper.select$((state: any) => state.Search?.currentSearchTerm);
+    return this.helper.select$((state: AppState) => state.Search?.currentSearchTerm);
   }
 
   selectSelectedSortBy$(): Observable<string | null> {
-    return this.helper.select$((state: any) => state.Search?.selectedSortBy || null);
+    return this.helper.select$((state: AppState) => state.Search?.selectedSortBy || null);
   }
 
   /**
    * Get all documents once (snapshot)
    */
   async getAllDocs(): Promise<Doc[]> {
-    return this.helper.selectOnce((state: any) => {
+    return this.helper.selectOnce((state: AppState) => {
       const searchState = state.Search;
       if (!searchState?.entities) return [];
       return Object.values(searchState.entities).filter((doc): doc is Doc => doc !== undefined);
@@ -141,66 +142,66 @@ export class SearchStateService {
    * Get a specific document by ID once (snapshot)
    */
   async getDocById(id: string): Promise<Doc | undefined> {
-    return this.helper.selectOnce((state: any) => state.Search?.entities?.[id]);
+    return this.helper.selectOnce((state: AppState) => state.Search?.entities?.[id]);
   }
 
   /**
    * Get search parameters once (snapshot)
    */
   async getSearchParams(): Promise<SearchParams | null> {
-    return this.helper.selectOnce((state: any) => state.Search?.searchParams);
+    return this.helper.selectOnce((state: AppState) => state.Search?.searchParams);
   }
 
   async getSearchMetaData(): Promise<SearchMetaData | null> {
-    return this.helper.selectOnce((state: any) => state.Search?.searchResultsMetaData);
+    return this.helper.selectOnce((state: AppState) => state.Search?.searchResultsMetaData);
   }
 
   async getSearchStatus(): Promise<LoadingStatus> {
-    return this.helper.selectOnce((state: any) => state.Search?.status || 'pending');
+    return this.helper.selectOnce((state: AppState) => state.Search?.status || 'pending');
   }
 
   async getTotalResults(): Promise<number> {
-    return this.helper.selectOnce((state: any) => state.Search?.searchResultsMetaData?.info?.total || 0);
+    return this.helper.selectOnce((state: AppState) => state.Search?.searchResultsMetaData?.info?.total || 0);
   }
 
   async getPageSize(): Promise<number | null> {
-    return this.helper.selectOnce((state: any) => state.Search?.selectedPageSize);
+    return this.helper.selectOnce((state: AppState) => state.Search?.selectedPageSize);
   }
 
   async isLoading(): Promise<boolean> {
-    return this.helper.selectOnce((state: any) => state.Search?.status === 'loading');
+    return this.helper.selectOnce((state: AppState) => state.Search?.status === 'loading');
   }
 
   async getSearchNotificationMsg(): Promise<string> {
-    return this.helper.selectOnce((state: any) => state.Search?.searchNotificationMsg || '');
+    return this.helper.selectOnce((state: AppState) => state.Search?.searchNotificationMsg || '');
   }
 
   async getPcAvailabilityToggleValue(): Promise<boolean> {
-    return this.helper.selectOnce((state: any) => state.Search?.pcAvailabilityToggleValue || false);
+    return this.helper.selectOnce((state: AppState) => state.Search?.pcAvailabilityToggleValue || false);
   }
 
   async getSearchInFullTextToggleValue(): Promise<boolean> {
-    return this.helper.selectOnce((state: any) => state.Search?.searchInFullTextToggleValue || false);
+    return this.helper.selectOnce((state: AppState) => state.Search?.searchInFullTextToggleValue || false);
   }
 
   async isSnackBarOpen(): Promise<boolean> {
-    return this.helper.selectOnce((state: any) => state.Search?.isSnackBarOpen || false);
+    return this.helper.selectOnce((state: AppState) => state.Search?.isSnackBarOpen || false);
   }
 
   async getDisplaySummary(): Promise<boolean> {
-    return this.helper.selectOnce((state: any) => state.Search?.displaySummary || false);
+    return this.helper.selectOnce((state: AppState) => state.Search?.displaySummary || false);
   }
 
   async isReportAProblemOpen(): Promise<boolean> {
-    return this.helper.selectOnce((state: any) => state.Search?.isReportAProblemOpen || false);
+    return this.helper.selectOnce((state: AppState) => state.Search?.isReportAProblemOpen || false);
   }
 
   async getCurrentSearchTerm(): Promise<string | undefined> {
-    return this.helper.selectOnce((state: any) => state.Search?.currentSearchTerm);
+    return this.helper.selectOnce((state: AppState) => state.Search?.currentSearchTerm);
   }
 
   async getSelectedSortBy(): Promise<string | null> {
-    return this.helper.selectOnce((state: any) => state.Search?.selectedSortBy || null);
+    return this.helper.selectOnce((state: AppState) => state.Search?.selectedSortBy || null);
   }
 
   /**
@@ -214,7 +215,7 @@ export class SearchStateService {
   // ── Signal API ──────────────────────────────────────────────────────────────
 
   allDocsSignal(): Signal<Doc[]> {
-    return this.helper.selectSignal((state: any) => {
+    return this.helper.selectSignal((state: AppState) => {
       const searchState = state.Search;
       if (!searchState?.entities) return [];
       return Object.values(searchState.entities).filter((doc): doc is Doc => doc !== undefined);
@@ -222,63 +223,63 @@ export class SearchStateService {
   }
 
   docByIdSignal(id: string): Signal<Doc | undefined> {
-    return this.helper.selectSignal((state: any) => state.Search?.entities?.[id], undefined);
+    return this.helper.selectSignal((state: AppState) => state.Search?.entities?.[id], undefined);
   }
 
   searchParamsSignal(): Signal<SearchParams | null> {
-    return this.helper.selectSignal((state: any) => state.Search?.searchParams, null);
+    return this.helper.selectSignal((state: AppState) => state.Search?.searchParams, null);
   }
 
   searchMetaDataSignal(): Signal<SearchMetaData | null> {
-    return this.helper.selectSignal((state: any) => state.Search?.searchResultsMetaData, null);
+    return this.helper.selectSignal((state: AppState) => state.Search?.searchResultsMetaData, null);
   }
 
   searchStatusSignal(): Signal<LoadingStatus> {
-    return this.helper.selectSignal((state: any) => state.Search?.status || 'pending', 'pending' as LoadingStatus);
+    return this.helper.selectSignal((state: AppState) => state.Search?.status || 'pending', 'pending' as LoadingStatus);
   }
 
   totalResultsSignal(): Signal<number> {
-    return this.helper.selectSignal((state: any) => state.Search?.searchResultsMetaData?.info?.total || 0, 0);
+    return this.helper.selectSignal((state: AppState) => state.Search?.searchResultsMetaData?.info?.total || 0, 0);
   }
 
   pageSizeSignal(): Signal<number | null> {
-    return this.helper.selectSignal((state: any) => state.Search?.selectedPageSize, null);
+    return this.helper.selectSignal((state: AppState) => state.Search?.selectedPageSize, null);
   }
 
   isLoadingSignal(): Signal<boolean> {
-    return this.helper.selectSignal((state: any) => state.Search?.status === 'loading', false);
+    return this.helper.selectSignal((state: AppState) => state.Search?.status === 'loading', false);
   }
 
   searchNotificationMsgSignal(): Signal<string> {
-    return this.helper.selectSignal((state: any) => state.Search?.searchNotificationMsg || '', '');
+    return this.helper.selectSignal((state: AppState) => state.Search?.searchNotificationMsg || '', '');
   }
 
   pcAvailabilityToggleValueSignal(): Signal<boolean> {
-    return this.helper.selectSignal((state: any) => state.Search?.pcAvailabilityToggleValue || false, false);
+    return this.helper.selectSignal((state: AppState) => state.Search?.pcAvailabilityToggleValue || false, false);
   }
 
   searchInFullTextToggleValueSignal(): Signal<boolean> {
-    return this.helper.selectSignal((state: any) => state.Search?.searchInFullTextToggleValue || false, false);
+    return this.helper.selectSignal((state: AppState) => state.Search?.searchInFullTextToggleValue || false, false);
   }
 
   isSnackBarOpenSignal(): Signal<boolean> {
-    return this.helper.selectSignal((state: any) => state.Search?.isSnackBarOpen || false, false);
+    return this.helper.selectSignal((state: AppState) => state.Search?.isSnackBarOpen || false, false);
   }
 
   displaySummarySignal(): Signal<boolean> {
-    return this.helper.selectSignal((state: any) => state.Search?.displaySummary || false, false);
+    return this.helper.selectSignal((state: AppState) => state.Search?.displaySummary || false, false);
   }
 
   isReportAProblemOpenSignal(): Signal<boolean> {
-    return this.helper.selectSignal((state: any) => state.Search?.isReportAProblemOpen || false, false);
+    return this.helper.selectSignal((state: AppState) => state.Search?.isReportAProblemOpen || false, false);
   }
 
   currentSearchTermSignal(): Signal<string | undefined> {
-    return this.helper.selectSignal((state: any) => state.Search?.currentSearchTerm, undefined);
+    return this.helper.selectSignal((state: AppState) => state.Search?.currentSearchTerm, undefined);
   }
 
   selectedSortBySignal(): Signal<string | null> {
-    return this.helper.selectSignal((state: any) => state.Search?.selectedSortBy || null, null);
+    return this.helper.selectSignal((state: AppState) => state.Search?.selectedSortBy || null, null);
   }
 
   // ── Typed dispatch helpers ──────────────────────────────────────────────────
