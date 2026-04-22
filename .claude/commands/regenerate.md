@@ -26,6 +26,31 @@ You must read the extracted source directory supplied by the user (or ask for it
 
 ---
 
+## Before starting — state index
+
+Before reading any reducer, action, or effect files from the decompiled source, check whether a state index exists in the source directory:
+
+```
+<sourceDir>/PRIMO_STATE_INDEX.md   ← human-readable summary
+<sourceDir>/primo-state-index.json ← machine-readable source of truth
+```
+
+**If the index exists:** Load `PRIMO_STATE_INDEX.md` as primary context. It contains feature keys, state interfaces, action catalog, and effect safety annotations for all slices — you do not need to read the raw source files for this information. Only open specific source files when you need detail beyond what the index provides (e.g., exact payload type of a new field, or a new slice that postdates the index).
+
+**If the index is missing or stale:** Run the indexer before proceeding:
+
+```bash
+cd <path-to-primo-shared-state>
+npm install
+npm run index-state -- <sourceDir>
+```
+
+The indexer is at [`.claude/tools/index-primo-state.ts`](.claude/tools/index-primo-state.ts). It writes `PRIMO_STATE_INDEX.md` and `primo-state-index.json` into `<sourceDir>`. These files are not part of `primo-shared-state` and are not committed to git — they live alongside the decompiled source.
+
+**Index freshness:** The index is stale if any file in `<sourceDir>/src/app/state/` is newer than `PRIMO_STATE_INDEX.md`. When in doubt, regenerate.
+
+---
+
 ## Package boundary — what belongs here and what does not
 
 This package is **state-only**. It provides typed, safe access to the Primo host application's NgRx store. Everything in this package must fall into one of these categories:

@@ -9,7 +9,8 @@
     "build": "npm run clean && tsc",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build",
-    "test": "echo \"No tests configured\" && exit 0"
+    "test": "echo \"No tests configured\" && exit 0",
+    "index-state": "ts-node --project .claude/tools/tsconfig.json .claude/tools/index-primo-state.ts"
   },
   "keywords": [
     "primo",
@@ -35,6 +36,8 @@
     "@ngrx/entity": "^19.2.1",
     "@ngrx/store": "^19.0.0",
     "rxjs": "^7.8.0",
+    "ts-morph": "^23.0.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
   },
   "files": [
