@@ -1,5 +1,6 @@
 import {LoadingStatus} from "./state.const";
 import {SafeHtml} from "@angular/platform-browser";
+import {FilterType} from "./filter.model";
 
 export type stringBoolean= "N" | "Y";
 
@@ -560,7 +561,7 @@ export interface MayAlsoBeFoundAtItem {
 
 export interface TopBarSelectedFilter {
   value: string;
-  filterType?: string;
+  filterType?: FilterType;
   mergedLabel?: string[] | undefined;
 }
 

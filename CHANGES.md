@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026.5.3 — 2026-05-06
+
+### Added
+
+- **`SearchState.isOffsetLimitExceeded: boolean`** (`store.model.ts`) — new field set by the host when a search request exceeds the pagination offset cap. Previously missing from the exported interface.
+- **`FilterState.resourceTypeFilterStatus: LoadingStatus`** (`filter.model.ts`) — new field tracking the load status of the resource-type filter bar. Previously missing from the exported interface.
+- **`SearchStateService`** — three new selectors for `isOffsetLimitExceeded`:
+  - `selectIsOffsetLimitExceeded$()` → `Observable<boolean>`
+  - `isOffsetLimitExceededSignal()` → `Signal<boolean>` (initial `false`)
+  - `isOffsetLimitExceeded()` → `Promise<boolean>`
+- **`FilterStateService`** — three new selectors for `resourceTypeFilterStatus`:
+  - `selectResourceTypeFilterStatus$()` → `Observable<LoadingStatus>`
+  - `resourceTypeFilterStatusSignal()` → `Signal<LoadingStatus>` (initial `'pending'`)
+  - `getResourceTypeFilterStatus()` → `Promise<LoadingStatus>`
+
+### Changed
+
+- **`resourceTypeFilterSelectedAction` — added required `index: number` prop** — the host effect uses `index` to focus the selected resource-type button for accessibility. Existing callers that dispatched without `index` must add it; pass `0` if the button position is not known. `FilterStateService.selectResourceType(model, index?)` defaults `index` to `0` — the typed dispatch helper is backwards-compatible.
+- **`TopBarSelectedFilter.filterType`** typed as `FilterType?` (was `string?`) — aligns with the source model's use of the `FilterType` enum.
+
+### ⚠️ Breaking change (no removal — payload addition)
+
+- **`resourceTypeFilterSelectedAction`**: the `index: number` prop is now required in the TypeScript type. Any remote code that dispatches this action directly (not via `FilterStateService.selectResourceType()`) must pass `index`.
+
+### Documentation
+
+- README.md: `SearchStateService` Observables/Signals/Snapshots tables — added `isOffsetLimitExceeded` rows; `FilterStateService` tables — added `resourceTypeFilterStatus` rows and updated `selectResourceType` signature to `selectResourceType(model, index?)`; `FilterState` fields table — added `resourceTypeFilterStatus` row; `TopBarSelectedFilter.filterType` corrected to `FilterType?`; `resourceTypeFilterSelectedAction` props updated; version tarball references bumped to `2026.5.3`.
+- EXAMPLES.md: `selectResourceType` call updated to pass `index`.
+
 ## 2026.5.2 -- prerelease
 
 ### Added

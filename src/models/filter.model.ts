@@ -8,6 +8,7 @@ export interface FilterState{
   excludedFilter: selectedFilters[] | null,
   multiSelectedFilter: MultiSelectedFilter[] | null,
   resourceTypeFilter:  ResourceTypeFilterModel | null,
+  resourceTypeFilterStatus: LoadingStatus,
   isFiltersOpen: boolean
 }
 

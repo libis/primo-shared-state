@@ -87,6 +87,7 @@ export interface SearchState extends EntityState<Doc> {
   displaySummary: boolean;
   isSavedSearch: boolean;
   isResourceRecommenderExpanded: boolean;
+  isOffsetLimitExceeded: boolean;
 }
 
 export interface ViewConfigState {

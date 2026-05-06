@@ -127,6 +127,10 @@ export class SearchStateService {
     return this.helper.select$((state: AppState) => state.Search?.selectedSortBy || null);
   }
 
+  selectIsOffsetLimitExceeded$(): Observable<boolean> {
+    return this.helper.select$((state: AppState) => state.Search?.isOffsetLimitExceeded || false);
+  }
+
   /**
    * Get all documents once (snapshot)
    */
@@ -202,6 +206,10 @@ export class SearchStateService {
 
   async getSelectedSortBy(): Promise<string | null> {
     return this.helper.selectOnce((state: AppState) => state.Search?.selectedSortBy || null);
+  }
+
+  async isOffsetLimitExceeded(): Promise<boolean> {
+    return this.helper.selectOnce((state: AppState) => state.Search?.isOffsetLimitExceeded || false);
   }
 
   /**
@@ -280,6 +288,10 @@ export class SearchStateService {
 
   selectedSortBySignal(): Signal<string | null> {
     return this.helper.selectSignal((state: AppState) => state.Search?.selectedSortBy || null, null);
+  }
+
+  isOffsetLimitExceededSignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: AppState) => state.Search?.isOffsetLimitExceeded || false, false);
   }
 
   // ── Typed dispatch helpers ──────────────────────────────────────────────────

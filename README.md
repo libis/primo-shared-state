@@ -11,7 +11,7 @@ Shared state models and Angular services for the Primo module-federation archite
 |---|---|
 | **Models** (`src/models/`) | TypeScript interfaces mirroring the host's state shapes: `SearchParams`, `Doc`, `UserState`, `FilterState`, `ViewConfigData`, `SystemConfiguration`, `EntityViewModel`, `accountViewModel`, `LoanItem`, `EventsNames`, `LoadingStatus`, … |
 | **Services** (`src/state/`) | Six `providedIn: 'root'` Angular services — `UserStateService`, `SearchStateService`, `FilterStateService` (read/write), `ViewConfigStateService`, `EntityStateService`, `AccountStateService` (read-only) — each offering Observable streams, one-shot Promise snapshots, Angular Signals, and typed dispatch helpers where appropriate |
-| **Actions** (`src/actions/`) | `shared-actions.ts` — 37 NgRx action creators whose `type` strings match the host's reducers **byte-for-byte** (payload of `loadFiltersAction` extended in 2026.5.1) |
+| **Actions** (`src/actions/`) | `shared-actions.ts` — 37 NgRx action creators whose `type` strings match the host's reducers **byte-for-byte** (payload of `resourceTypeFilterSelectedAction` extended in 2026.5.3) |
 | **Utility** (`src/utils/`) | `StateHelper` — thin wrapper around `Store` used internally by all services |
 
 ### Table of contents
@@ -88,7 +88,7 @@ npm run build
 
 # 3. Create a distributable tarball
 npm pack
-# → libis-primo-shared-state-2026.5.2.tgz
+# → libis-primo-shared-state-2026.5.3.tgz
 ```
 
 ---
@@ -99,14 +99,14 @@ npm pack
 
 ```bash
 npm pack
-cp libis-primo-shared-state-2026.5.2.tgz path/to/NDE_customModule/nde/
+cp libis-primo-shared-state-2026.5.3.tgz path/to/NDE_customModule/nde/
 ```
 
 ### Step 2 — add the `file:` dependency to the remote's `package.json`
 
 ```json
 "dependencies": {
-  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.5.2.tgz"
+  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.5.3.tgz"
 }
 ```
 
@@ -443,7 +443,7 @@ this.filter.applyMultiSelectFilters([
   { filterGroup: 'creator', filterValue: 'Jones' },
 ]);
 this.filter.clearAllFilters({ q: 'angular', scope: 'Everything' });
-this.filter.selectResourceType({ resourceType: 'books', count: 42 });
+this.filter.selectResourceType({ resourceType: 'books', count: 42 }, 0);
 this.filter.setFiltersOpen(true);
 this.filter.setRememberAll(true);
 
@@ -654,7 +654,7 @@ These write a simple scalar to the store. No host effect listens to them, so the
 | `changePcAvailabilityToggleValue` | Sets Expand My Results value (no search) |
 | `changeSearchInFullTextToggleValue` | Sets full-text toggle value (no search) |
 | `clearAllFiltersAction` | Resets all active filters |
-| `resourceTypeFilterSelectedAction` | Selects a resource type filter |
+| `resourceTypeFilterSelectedAction` | Selects a resource type filter (triggers new search; requires `index` for host focus management — pass `0` if unknown) |
 
 #### ✅ Exported success/failed actions — terminal writes with no downstream effects
 
@@ -790,6 +790,7 @@ constructor() {
 | `selectIsReportAProblemOpen$()` | `Observable<boolean>` | Report a Problem panel state |
 | `selectCurrentSearchTerm$()` | `Observable<string \| undefined>` | Current saved search term |
 | `selectSelectedSortBy$()` | `Observable<string \| null>` | Selected sort-by field |
+| `selectIsOffsetLimitExceeded$()` | `Observable<boolean>` | Offset limit exceeded (pagination cap reached) |
 
 #### Signals
 | Method | Returns | Initial value |
@@ -810,6 +811,7 @@ constructor() {
 | `isReportAProblemOpenSignal()` | `Signal<boolean>` | `false` |
 | `currentSearchTermSignal()` | `Signal<string \| undefined>` | `undefined` |
 | `selectedSortBySignal()` | `Signal<string \| null>` | `null` |
+| `isOffsetLimitExceededSignal()` | `Signal<boolean>` | `false` |
 
 #### Snapshots
 | Method | Returns |
@@ -830,6 +832,7 @@ constructor() {
 | `isReportAProblemOpen()` | `Promise<boolean>` |
 | `getCurrentSearchTerm()` | `Promise<string \| undefined>` |
 | `getSelectedSortBy()` | `Promise<string \| null>` |
+| `isOffsetLimitExceeded()` | `Promise<boolean>` |
 
 #### Dispatch helpers
 `search(params, type?)` · `clearSearch()` · `setPageLimit(n)` · `setPageNumber(n)` · `setSortBy(s)` · `setIsSavedSearch(b)` · `setSearchNotificationMessage(s)` · `saveCurrentSearchTerm(s)` · `setDisplaySummary(b)` · `setIsSnackBarOpen(b)` · `setIsReportAProblemOpen(b)` · `toggleExpandMyResults(b)` · `toggleSearchInFullText(b)` · `dispatch(action)`
@@ -848,6 +851,7 @@ constructor() {
 | `selectResourceTypeFilter$()` | `Observable<ResourceTypeFilterModel \| null>` | Resource type bar |
 | `selectIsFiltersOpen$()` | `Observable<boolean>` | Filter panel open state |
 | `selectIsRememberAll$()` | `Observable<boolean>` | Remember-all toggle |
+| `selectResourceTypeFilterStatus$()` | `Observable<LoadingStatus>` | Resource type filter load status |
 
 #### Signals
 | Method | Returns | Initial value |
@@ -859,6 +863,7 @@ constructor() {
 | `resourceTypeFilterSignal()` | `Signal<ResourceTypeFilterModel \| null>` | `null` |
 | `isFiltersOpenSignal()` | `Signal<boolean>` | `false` |
 | `isRememberAllSignal()` | `Signal<boolean>` | `false` |
+| `resourceTypeFilterStatusSignal()` | `Signal<LoadingStatus>` | `'pending'` |
 
 #### Snapshots
 | Method | Returns |
@@ -870,9 +875,10 @@ constructor() {
 | `getResourceTypeFilter()` | `Promise<ResourceTypeFilterModel \| null>` |
 | `isFiltersOpen()` | `Promise<boolean>` |
 | `isRememberAll()` | `Promise<boolean>` |
+| `getResourceTypeFilterStatus()` | `Promise<LoadingStatus>` |
 
 #### Dispatch helpers
-`loadFilters(params, facetsCacheKey?)` · `updateSortByParam(s)` · `includeFilter(group, value, labels?)` · `excludeFilter(group, value, labels?)` · `applyMultiSelectFilters(filters)` · `clearAllFilters(params?)` · `selectResourceType(model)` · `setFiltersOpen(b)` · `setRememberAll(b)` · `dispatch(action)`
+`loadFilters(params, facetsCacheKey?)` · `updateSortByParam(s)` · `includeFilter(group, value, labels?)` · `excludeFilter(group, value, labels?)` · `applyMultiSelectFilters(filters)` · `clearAllFilters(params?)` · `selectResourceType(model, index?)` · `setFiltersOpen(b)` · `setRememberAll(b)` · `dispatch(action)`
 
 ---
 
@@ -1753,7 +1759,7 @@ A filter chip shown in the search top bar.
 | Field | Type |
 |---|---|
 | `value` | `string` |
-| `filterType` | `string?` |
+| `filterType` | `FilterType?` |
 | `mergedLabel` | `string[] \| undefined` |
 
 ---
@@ -1877,6 +1883,7 @@ Defined in `src/models/filter.model.ts`.
 | `excludedFilter` | `selectedFilters[] \| null` | Active exclude facet filters |
 | `multiSelectedFilter` | `MultiSelectedFilter[] \| null` | Multi-select facet filters |
 | `resourceTypeFilter` | `ResourceTypeFilterModel \| null` | Active resource-type filter |
+| `resourceTypeFilterStatus` | `LoadingStatus` | Load status of the resource-type filter bar |
 | `isFiltersOpen` | `boolean` | Whether the filter panel is open |
 
 #### `selectedFilters`
@@ -2284,7 +2291,7 @@ import { searchAction, loadFiltersAction, setDecodedJwt } from '@libis/primo-sha
 | `removeExcludeFilterAction` *(new in 2026.4.1)* | `[Filter Group Dropdown] Remove Exclude Filter` | `{ filterValue: string; filterGroup: string; mergedLabels: string[] }` |
 | `applyMultiSelectFiltersAction` | `[Filter Side Bar] Apply Multi-select Filters` | `{ multiSelectedFilters: FilterGroupValue[] }` |
 | `clearAllFiltersAction` | `[Filters] Clear All Filter` | `{ searchParams?: SearchParams }` |
-| `resourceTypeFilterSelectedAction` | `[Resource Type Filter Bar] Resource Type Filter Bar Selected` | `{ selectedResourceType: ResourceTypeFilterModel }` |
+| `resourceTypeFilterSelectedAction` | `[Resource Type Filter Bar] Resource Type Filter Bar Selected` | `{ selectedResourceType: ResourceTypeFilterModel; index: number }` *(index added in 2026.5.3 — pass `0` if unknown)* |
 | `setIsFiltersOpenAction` | `[Filter Side Bar] Set Is Filters Open` | `{ isFiltersOpen: boolean }` |
 | `rememberAllChangeValueAction` | `[Filter Side Bar] Remember All button change value` | `{ newValue: boolean }` |
 
@@ -2336,7 +2343,7 @@ This package uses `YYYY.M.regenerateCount` versioning (e.g. `2026.4.1`):
 # After regenerating, build and pack:
 npm run build
 npm pack
-# → libis-primo-shared-state-2026.5.2.tgz
+# → libis-primo-shared-state-2026.5.3.tgz
 ```
 
 ## Regenerating this package

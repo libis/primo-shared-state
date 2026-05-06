@@ -205,10 +205,15 @@ export const clearAllFiltersAction = createAction(
   props<{ searchParams?: SearchParams }>()
 );
 
-/** SAFE: Pure UI filter selection — selects a resource type filter. */
+/**
+ * SAFE: Command — selects a resource type filter. Host effect triggers a new search.
+ * `index` is the ordinal position of the button in the resource-type bar; the host
+ * uses it for accessibility focus management after the search completes. Remotes
+ * should pass `0` if the exact button index is not known.
+ */
 export const resourceTypeFilterSelectedAction = createAction(
   '[Resource Type Filter Bar] Resource Type Filter Bar Selected',
-  props<{ selectedResourceType: ResourceTypeFilterModel }>()
+  props<{ selectedResourceType: ResourceTypeFilterModel; index: number }>()
 );
 
 /** SAFE: Pure UI toggle — controls whether the filter side bar is open. */

@@ -886,7 +886,7 @@ export class CustomFiltersComponent {
   ) {}
 
   showOnlyBooks(): void {
-    this.filter.selectResourceType({ resourceType: 'books', count: 0 });
+    this.filter.selectResourceType({ resourceType: 'books', count: 0 }, 0);
   }
 
   excludeNewspapers(): void {
