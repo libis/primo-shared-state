@@ -18,6 +18,10 @@ import { StateHelper } from '../utils/state-helper';
  *
  * This service exposes NO dispatch methods. All account mutations go through
  * the host's account effects and ILS service calls.
+ *
+ * @deprecated Since 2026.6.1 — inject {@link PrimoStateService} and use
+ * `primo.account` instead. The direct service export will be removed in a
+ * future regeneration.
  */
 @Injectable({
   providedIn: 'root'

@@ -16,7 +16,10 @@ import {
   setDisplaySummaryAction,
   setIsSnackBarOpenAction,
   setIsReportAProblemOpenAction,
+  setIsResourceRecommenderExpandedAction,
   saveCurrentSearchTermAction,
+  updateLastSearchTermsAction,
+  updateFullDisplayRecordYouCameFromAction,
   pcAvailabilityToggleChanged,
   searchInFullTextToggleChanged,
 } from '../actions/shared-actions';
@@ -24,6 +27,10 @@ import {
 /**
  * Service for managing search state
  * Provides methods to read and write search-related data in the store
+ *
+ * @deprecated Since 2026.6.1 — inject {@link PrimoStateService} and use
+ * `primo.search` instead. The direct service export will be removed in a
+ * future regeneration.
  */
 @Injectable({
   providedIn: 'root'
@@ -127,8 +134,16 @@ export class SearchStateService {
     return this.helper.select$((state: AppState) => state.Search?.selectedSortBy || null);
   }
 
-  selectIsOffsetLimitExceeded$(): Observable<boolean> {
-    return this.helper.select$((state: AppState) => state.Search?.isOffsetLimitExceeded || false);
+  selectLastSearchTerms$(): Observable<string[]> {
+    return this.helper.select$((state: AppState) => state.Search?.lastSearchTerms || []);
+  }
+
+  selectFullDisplayRecordYouCameFrom$(): Observable<string> {
+    return this.helper.select$((state: AppState) => state.Search?.fullDisplayRecordYouCameFrom || '');
+  }
+
+  selectIsResourceRecommenderExpanded$(): Observable<boolean> {
+    return this.helper.select$((state: AppState) => state.Search?.isResourceRecommenderExpanded || false);
   }
 
   /**
@@ -208,8 +223,16 @@ export class SearchStateService {
     return this.helper.selectOnce((state: AppState) => state.Search?.selectedSortBy || null);
   }
 
-  async isOffsetLimitExceeded(): Promise<boolean> {
-    return this.helper.selectOnce((state: AppState) => state.Search?.isOffsetLimitExceeded || false);
+  async getLastSearchTerms(): Promise<string[]> {
+    return this.helper.selectOnce((state: AppState) => state.Search?.lastSearchTerms || []);
+  }
+
+  async getFullDisplayRecordYouCameFrom(): Promise<string> {
+    return this.helper.selectOnce((state: AppState) => state.Search?.fullDisplayRecordYouCameFrom || '');
+  }
+
+  async isResourceRecommenderExpanded(): Promise<boolean> {
+    return this.helper.selectOnce((state: AppState) => state.Search?.isResourceRecommenderExpanded || false);
   }
 
   /**
@@ -290,8 +313,16 @@ export class SearchStateService {
     return this.helper.selectSignal((state: AppState) => state.Search?.selectedSortBy || null, null);
   }
 
-  isOffsetLimitExceededSignal(): Signal<boolean> {
-    return this.helper.selectSignal((state: AppState) => state.Search?.isOffsetLimitExceeded || false, false);
+  lastSearchTermsSignal(): Signal<string[]> {
+    return this.helper.selectSignal((state: AppState) => state.Search?.lastSearchTerms || [], [] as string[]);
+  }
+
+  fullDisplayRecordYouCameFromSignal(): Signal<string> {
+    return this.helper.selectSignal((state: AppState) => state.Search?.fullDisplayRecordYouCameFrom || '', '');
+  }
+
+  isResourceRecommenderExpandedSignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: AppState) => state.Search?.isResourceRecommenderExpanded || false, false);
   }
 
   // ── Typed dispatch helpers ──────────────────────────────────────────────────
@@ -346,5 +377,17 @@ export class SearchStateService {
 
   saveCurrentSearchTerm(searchTerm: string): void {
     this.helper.dispatch(saveCurrentSearchTermAction({ searchTerm }));
+  }
+
+  addLastSearchTerm(lastSearchTerm: string): void {
+    this.helper.dispatch(updateLastSearchTermsAction({ lastSearchTerm }));
+  }
+
+  setFullDisplayRecordYouCameFrom(fullDisplayRecordYouCameFrom: string): void {
+    this.helper.dispatch(updateFullDisplayRecordYouCameFromAction({ fullDisplayRecordYouCameFrom }));
+  }
+
+  setIsResourceRecommenderExpanded(isResourceRecommenderExpanded: boolean): void {
+    this.helper.dispatch(setIsResourceRecommenderExpandedAction({ isResourceRecommenderExpanded }));
   }
 }

@@ -203,11 +203,12 @@ export interface ElectronicService {
   displayInEmbedViewer?: boolean;
   fromNetwork?: boolean;
   filteredByAfGroups?: string;
-  supported?: boolean;
   serviceNotAvailable?: string;
   serviceNotAvailableReason?: string;
   researchFileList?: EsploroResearchFile[];
   researchLinksList?: EsploroResearchLink[];
+  collapse?: boolean;
+  shouldDisplayInDigitalViewer?: boolean;
 }
 
 export interface AdditionalElectronicService {
@@ -372,6 +373,8 @@ export interface Search {
   isbn: string[];
   title: string[];
   creatorcontrib: string[];
+  crsid: string[];
+  cdparentid: string[];
 }
 
 export enum Sourceformat {
@@ -569,3 +572,37 @@ export interface SearchWithinJournalContext {
   recordId: string;
   recordTitle: string;
 }
+
+export interface CourseInfo {
+  fullCrsinfo: string;
+  courseId?: string;
+  courseCodeAndSection?: string;
+  courseName?: string;
+  publicationStatus?: string;
+  courseInst?: string;
+}
+
+export interface CollectionRecordData {
+  type?: string;
+  collectionId?: string;
+  institution?: string;
+}
+
+export interface RelatedCourse {
+  name: string;
+  link?: string;
+  isLinkable: boolean;
+}
+
+export interface RelatedCollection {
+  name: string;
+  id: string;
+}
+
+export const MORE_FROM_THE_SAME_TYPE = {
+  COURSE: 'course',
+  COLLECTION: 'collection'
+} as const;
+
+export type MoreFromTheSameType =
+  typeof MORE_FROM_THE_SAME_TYPE[keyof typeof MORE_FROM_THE_SAME_TYPE];

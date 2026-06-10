@@ -18,6 +18,10 @@ import {
 /**
  * Service for managing user state
  * Provides methods to read and write user-related data in the store
+ *
+ * @deprecated Since 2026.6.1 — inject {@link PrimoStateService} and use
+ * `primo.user` instead. The direct service export will be removed in a
+ * future regeneration.
  */
 @Injectable({
   providedIn: 'root'

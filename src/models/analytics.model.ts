@@ -64,7 +64,8 @@ export const EventsNames = {
   CITATION_LINKER: 'Citation Linker',
   TOPIC_OVERVIEW: 'Topic Overview',
   LEGANTO_COURSE_INFO: 'Leganto Course Info',
-  EXPORT_ALL: 'Export All'
+  EXPORT_ALL: 'Export All',
+  MORE_FROM_THE_SAME: 'More From the Same'
 } as const;
 
 export const PageNames: IgnoreMapSimpleString = {

@@ -9,7 +9,10 @@ export * from './models/view-config.model';
 export * from './models/account.model';
 export * from './models/store.model';
 
-// State Services
+// Facade — the single entry point; preferred over the individual services below
+export * from './state/primo-state.service';
+
+// State Services (deprecated for direct injection — use PrimoStateService)
 export * from './state/user-state.service';
 export * from './state/search-state.service';
 export * from './state/filter-state.service';

@@ -16,12 +16,19 @@ import {
   resourceTypeFilterSelectedAction,
   setIsFiltersOpenAction,
   rememberAllChangeValueAction,
+  quickFilterAction,
+  addQuickFilterAction,
+  removeQuickFilterAction,
   FilterGroupValue,
 } from '../actions/shared-actions';
 
 /**
  * Service for managing filter state
  * Provides methods to read and write filter-related data in the store
+ *
+ * @deprecated Since 2026.6.1 — inject {@link PrimoStateService} and use
+ * `primo.filters` instead. The direct service export will be removed in a
+ * future regeneration.
  */
 @Injectable({
   providedIn: 'root'
@@ -191,8 +198,20 @@ export class FilterStateService {
     this.helper.dispatch(applyMultiSelectFiltersAction({ multiSelectedFilters }));
   }
 
-  clearAllFilters(searchParams?: SearchParams): void {
-    this.helper.dispatch(clearAllFiltersAction({ searchParams }));
+  clearAllFilters(searchParams?: SearchParams, isSideBarFilters?: boolean, isQuickFilters?: boolean): void {
+    this.helper.dispatch(clearAllFiltersAction({ searchParams, isSideBarFilters, isQuickFilters }));
+  }
+
+  toggleQuickFilter(quickFilterCode: string): void {
+    this.helper.dispatch(quickFilterAction({ quickFilterCode }));
+  }
+
+  addQuickFilter(quickFilterCode: string): void {
+    this.helper.dispatch(addQuickFilterAction({ quickFilterCode }));
+  }
+
+  removeQuickFilter(quickFilterCode: string): void {
+    this.helper.dispatch(removeQuickFilterAction({ quickFilterCode }));
   }
 
   selectResourceType(selectedResourceType: ResourceTypeFilterModel, index = 0): void {

@@ -20,6 +20,10 @@ import { StateHelper } from '../utils/state-helper';
  * Configuration is set once at bootstrap by the host — remotes only read it.
  *
  * This service exposes NO dispatch methods. The host owns all config writes.
+ *
+ * @deprecated Since 2026.6.1 — inject {@link PrimoStateService} and use
+ * `primo.config` instead. The direct service export will be removed in a
+ * future regeneration.
  */
 @Injectable({
   providedIn: 'root'

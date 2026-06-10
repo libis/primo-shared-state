@@ -17,7 +17,7 @@
  *   - viewConfig          (ViewConfigState)
  *   - linked-data-entity  (LinkedDataEntityState)
  *
- * The remaining 23 slices are declared as opaque
+ * The remaining 24 slices are declared as opaque
  * `Record<string, unknown>` aliases. This keeps `AppState` complete (so
  * consumers who write their own selectors against an unused slice still
  * type-check at the slice-access level), without forcing this package to
@@ -35,7 +35,7 @@
  * mix of camelCase (`viewConfig`, `bulkActions`, `collectionDiscovery`,
  * `routerState`), PascalCase (`Search`, `Delivery`), kebab-case
  * (`authority-search`, `browse-search`, `citation-trails`, `database-search`,
- * `full-display`, `journal-search`, `linked-data-entity`,
+ * `full-display`, `journal-search`, `linked-data-entity`, `more-from-the-same`,
  * `natural-language-search`, `newspaper-search`, `ngrs-general`,
  * `ngrs-record-data`, `research-assistant`, `citation-trails`), and lowercase
  * (`account`, `atoz`, `categories`, `citations`, `favorites`, `filters`,
@@ -87,7 +87,6 @@ export interface SearchState extends EntityState<Doc> {
   displaySummary: boolean;
   isSavedSearch: boolean;
   isResourceRecommenderExpanded: boolean;
-  isOffsetLimitExceeded: boolean;
 }
 
 export interface ViewConfigState {
@@ -185,6 +184,7 @@ export type FrbrState = Record<string, unknown>;
 export type FullDisplayState = Record<string, unknown>;
 export type JournalSearchState = Record<string, unknown>;
 export type LanguageState = Record<string, unknown>;
+export type MoreFromTheSameState = Record<string, unknown>;
 export type NaturalLanguageSearchState = Record<string, unknown>;
 export type NewspaperSearchState = Record<string, unknown>;
 export type NgrsGeneralState = Record<string, unknown>;
@@ -215,6 +215,7 @@ export interface AppState {
   'journal-search': JournalSearchState;
   language: LanguageState;
   'linked-data-entity': LinkedDataEntityState;
+  'more-from-the-same': MoreFromTheSameState;
   'natural-language-search': NaturalLanguageSearchState;
   'newspaper-search': NewspaperSearchState;
   'ngrs-general': NgrsGeneralState;

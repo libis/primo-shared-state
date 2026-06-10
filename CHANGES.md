@@ -1,5 +1,39 @@
 # Changelog
 
+## 2026.6.1 — 2026-06-10
+
+Regenerated from the June 2026 NDE extract (`src_bootstrap_ts.ffc1345247cad134`).
+
+### Added
+
+- **`PrimoStateService` facade** (`src/state/primo-state.service.ts`) — the new single entry point for the package. Inject once and reach every domain: `primo.search`, `primo.filters`, `primo.user`, `primo.config`, `primo.entity`, `primo.account`. Each domain property is the corresponding `*StateService` root singleton, so the existing per-service API applies verbatim. The six individual services are now marked `@deprecated` for direct injection (they remain exported and fully functional; removal will come in a later regeneration after a migration window).
+- **New filter actions:** `quickFilterAction` (`[Quick Filters] Quick Filter Clicked`), `addQuickFilterAction` (`[Quick Filters] Add Quick Filter`), `removeQuickFilterAction` (`[Quick Filters] Remove Quick Filter`) — quick-filter commands; host effects run the filtered search. `applyIncludeFilterForHyperTextLikingAction` (`[Hyper text linking facet] Include Filter`) — reducer-only include-filter write.
+- **New search actions:** `updateLastSearchTermsAction` (`[Search] Upsert Last Search Term`), `updateFullDisplayRecordYouCameFromAction` (`[Search] Update record you came from`) — pure reducer writes, no host effect listens.
+- **`FilterStateService`** — new dispatch helpers `toggleQuickFilter(code)`, `addQuickFilter(code)`, `removeQuickFilter(code)`.
+- **`SearchStateService`** — new selectors (all three variants each, API symmetry): `selectLastSearchTerms$()` / `lastSearchTermsSignal()` / `getLastSearchTerms()`, `selectFullDisplayRecordYouCameFrom$()` / `fullDisplayRecordYouCameFromSignal()` / `getFullDisplayRecordYouCameFrom()`, `selectIsResourceRecommenderExpanded$()` / `isResourceRecommenderExpandedSignal()` / `isResourceRecommenderExpanded()`; new dispatch helpers `addLastSearchTerm(s)`, `setFullDisplayRecordYouCameFrom(s)`, `setIsResourceRecommenderExpanded(b)`.
+- **Search model** — `ElectronicService.collapse?: boolean`, `ElectronicService.shouldDisplayInDigitalViewer?: boolean`; `Search` (pnx search section) `crsid: string[]`, `cdparentid: string[]`; new "More From the Same" types: `CourseInfo`, `CollectionRecordData`, `RelatedCourse`, `RelatedCollection`, `MORE_FROM_THE_SAME_TYPE`, `MoreFromTheSameType`.
+- **View-config model** — `ViewConfigData.is_ip_allow_to_login?: boolean`; `SystemConfiguration.rapido_hide_blank_ill_from_link_menu: boolean`; `MappingTables['Authority Search Operators']: MappingTable[]`.
+- **Analytics model** — `EventsNames.MORE_FROM_THE_SAME: 'More From the Same'`.
+- **`store.model.ts`** — new host slice `more-from-the-same` added to `AppState` as an opaque `MoreFromTheSameState` stub.
+
+### Changed
+
+- **`clearAllFiltersAction` payload** gained optional `isSideBarFilters?: boolean` and `isQuickFilters?: boolean` (the host uses them only to tag the analytics event with the clear's origin). `FilterStateService.clearAllFilters(searchParams?, isSideBarFilters?, isQuickFilters?)` updated accordingly — backwards-compatible.
+- **`filtersSuccessAction` JSDoc/README corrected** — the host's `updateFilterStateForNewSearch$` effect does listen to it, but performs pure state derivation (no HTTP); the action remains exported.
+- Host behaviour note (no package change): `loadViewConfigSuccessAction` is now only emitted when `viewConfig.IsViewNdeEnabled` is true; otherwise the host dispatches `loadViewConfigFailedAction`.
+- Host's search-header interface gained `searchOperator` support; not applicable here — this package deliberately ships `SearchHeaderType` as a plain string union (the host interface carries Angular `Signal` UI fields, out of the state-only scope).
+
+### ⚠️ Breaking removals (confirmed by user before applying)
+
+- **`SearchState.isOffsetLimitExceeded` and the three `SearchStateService` methods** `selectIsOffsetLimitExceeded$()`, `isOffsetLimitExceededSignal()`, `isOffsetLimitExceeded()` — the host removed the field and `offsetLimitExceededAction` entirely (the offset-cap error path was dropped from `search.effects.ts`). The selector was already dead (always `false`) against the June host.
+- **`ElectronicService.supported?: boolean`** — field removed from the host model (superseded by `collapse?` / `shouldDisplayInDigitalViewer?`).
+- **`resetUserSettingsSuccessAction`** — safety correction, not host drift: the host effect `restoreLanguageToInterfaceLanguage$` listens to it and **navigates to `/home` and resets the interface language**. The previous JSDoc ("no downstream effects") was wrong; per the safety gate the action may not be exported. Listen passively via `ofType('[User-Settings] reset user settings success')` if you need to react to it.
+
+### Documentation
+
+- **README.md** — new "The facade: PrimoStateService" usage section and facade entry at the top of the API reference; "What's inside" table updated (facade row, deprecation note, action count corrected from the stale "37" to 48); `SearchStateService` / `FilterStateService` reference tables updated for the additions and removals above; action catalog tables updated (quick filters, hypertext include, last-search-terms, record-you-came-from; `clearAllFiltersAction` payload; `resetUserSettingsSuccessAction` row removed with an explanatory note in the safety section); `ElectronicService`, `Search` (pnx), `ViewConfigData`, `SystemConfiguration`, `MappingTables`, `EventsNames` model tables updated; new "More From the Same" types documented; opaque-slice count 23 → 24; install/pack version strings bumped to `2026.6.1`.
+- **EXAMPLES.md** — new leading example showing the facade as the recommended injection point, with a note that the existing per-service examples still compile unchanged.
+
 ## 2026.5.3 — 2026-05-06
 
 ### Added

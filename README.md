@@ -9,9 +9,10 @@ Shared state models and Angular services for the Primo module-federation archite
 
 | Layer | Contents |
 |---|---|
+| **Facade** (`src/state/primo-state.service.ts`) | `PrimoStateService` — the single entry point. Inject it once and reach every domain: `primo.search`, `primo.filters`, `primo.user`, `primo.config`, `primo.entity`, `primo.account` |
 | **Models** (`src/models/`) | TypeScript interfaces mirroring the host's state shapes: `SearchParams`, `Doc`, `UserState`, `FilterState`, `ViewConfigData`, `SystemConfiguration`, `EntityViewModel`, `accountViewModel`, `LoanItem`, `EventsNames`, `LoadingStatus`, … |
-| **Services** (`src/state/`) | Six `providedIn: 'root'` Angular services — `UserStateService`, `SearchStateService`, `FilterStateService` (read/write), `ViewConfigStateService`, `EntityStateService`, `AccountStateService` (read-only) — each offering Observable streams, one-shot Promise snapshots, Angular Signals, and typed dispatch helpers where appropriate |
-| **Actions** (`src/actions/`) | `shared-actions.ts` — 37 NgRx action creators whose `type` strings match the host's reducers **byte-for-byte** (payload of `resourceTypeFilterSelectedAction` extended in 2026.5.3) |
+| **Services** (`src/state/`) | Six `providedIn: 'root'` Angular services — `UserStateService`, `SearchStateService`, `FilterStateService` (read/write), `ViewConfigStateService`, `EntityStateService`, `AccountStateService` (read-only) — each offering Observable streams, one-shot Promise snapshots, Angular Signals, and typed dispatch helpers where appropriate. **Deprecated for direct injection since 2026.6.1** — reach them through `PrimoStateService` instead |
+| **Actions** (`src/actions/`) | `shared-actions.ts` — 48 NgRx action creators whose `type` strings match the host's reducers **byte-for-byte** |
 | **Utility** (`src/utils/`) | `StateHelper` — thin wrapper around `Store` used internally by all services |
 
 ### Table of contents
@@ -20,6 +21,7 @@ Shared state models and Angular services for the Primo module-federation archite
 - [Building & packaging](#building--packaging)
 - [Deploying to a module-federation remote client](#deploying-to-a-module-federation-remote-client)
 - [Usage](#usage)
+  - [The facade: PrimoStateService](#the-facade-primostateservice)
   - [Observable API](#observable-api-reactive)
   - [Signal API](#signal-api-angular-17)
   - [Promise snapshots](#one-shot-promise-snapshots-logic-not-templates)
@@ -88,7 +90,7 @@ npm run build
 
 # 3. Create a distributable tarball
 npm pack
-# → libis-primo-shared-state-2026.5.3.tgz
+# → libis-primo-shared-state-2026.6.1.tgz
 ```
 
 ---
@@ -99,14 +101,14 @@ npm pack
 
 ```bash
 npm pack
-cp libis-primo-shared-state-2026.5.3.tgz path/to/NDE_customModule/nde/
+cp libis-primo-shared-state-2026.6.1.tgz path/to/NDE_customModule/nde/
 ```
 
 ### Step 2 — add the `file:` dependency to the remote's `package.json`
 
 ```json
 "dependencies": {
-  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.5.3.tgz"
+  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.6.1.tgz"
 }
 ```
 
@@ -214,7 +216,48 @@ import { Store } from '@ngrx/store';
 store.select((state: AppState) => state.Search.searchResultsMetaData?.info?.total);
 ```
 
-Six slices are fully typed (`Search`, `user`, `filters`, `account`, `viewConfig`, `linked-data-entity`); the other 23 are declared as opaque `Record<string, unknown>` — they type-check at the slice-access level but you'll need to narrow field reads yourself. Feature-key casing in `AppState` mirrors each reducer's `StoreModule.forFeature(...)` registration verbatim (mixed PascalCase `Search`, camelCase `viewConfig`, kebab-case `linked-data-entity`, lowercase `user`) — selectors must match the exact runtime key.
+Six slices are fully typed (`Search`, `user`, `filters`, `account`, `viewConfig`, `linked-data-entity`); the other 24 are declared as opaque `Record<string, unknown>` — they type-check at the slice-access level but you'll need to narrow field reads yourself. Feature-key casing in `AppState` mirrors each reducer's `StoreModule.forFeature(...)` registration verbatim (mixed PascalCase `Search`, camelCase `viewConfig`, kebab-case `linked-data-entity`, lowercase `user`) — selectors must match the exact runtime key.
+
+### The facade: PrimoStateService
+
+Since 2026.6.1 the package ships one umbrella service that groups the whole
+API into logical domains. Inject it once instead of juggling six services:
+
+```typescript
+import { Component, inject } from '@angular/core';
+import { PrimoStateService } from '@libis/primo-shared-state';
+
+@Component({ /* … */ })
+export class MyRemoteComponent {
+  private primo = inject(PrimoStateService);
+
+  // Read — every domain offers Observable, Signal, and Promise variants
+  docs        = this.primo.search.allDocsSignal();
+  isLoggedIn$ = this.primo.user.selectIsLoggedIn$();
+  vid$        = this.primo.config.selectVid$();
+  loans       = this.primo.account.loansListSignal();
+
+  // Write — typed dispatch helpers on writable domains
+  clearFilters(): void {
+    this.primo.filters.clearAllFilters();
+  }
+}
+```
+
+| Domain | Backing slice(s) | Writable? |
+|---|---|---|
+| `primo.search` | `Search` | yes — search, pagination, sort, UI toggles |
+| `primo.filters` | `filters` | yes — include/exclude, multi-select, quick filters |
+| `primo.user` | `user` | yes — settings toggles, decoded JWT, logout reason |
+| `primo.config` | `viewConfig` | read-only (host owns config) |
+| `primo.entity` | `linked-data-entity` | read-only (host owns entity loads) |
+| `primo.account` | `account` | read-only (host owns ILS calls) |
+
+Each domain property *is* the corresponding `*StateService` instance (same
+root singletons), so the per-service API reference below applies verbatim —
+`primo.search` has everything documented under `SearchStateService`, and so
+on. Direct injection of the individual services still works but is
+**deprecated**; migrate at your own pace, the behaviour is identical.
 
 ### Observable API (reactive)
 
@@ -632,6 +675,9 @@ These tell the host to start a well-defined operation. The host's effects own th
 | `IncludeFilterButtonClickedAction` | Applies an include facet filter |
 | `ExcludeFilterButtonClickedAction` | Applies an exclude facet filter |
 | `applyMultiSelectFiltersAction` | Applies multi-select filters |
+| `quickFilterAction` | Toggles a quick-filter chip and triggers the filtered search |
+| `addQuickFilterAction` | Adds a quick filter and triggers the filtered search |
+| `removeQuickFilterAction` | Removes a quick filter and triggers the filtered search |
 | `pcAvailabilityToggleChanged` | Toggles Expand My Results and triggers search |
 | `searchInFullTextToggleChanged` | Toggles full-text search and triggers search |
 
@@ -654,6 +700,10 @@ These write a simple scalar to the store. No host effect listens to them, so the
 | `changePcAvailabilityToggleValue` | Sets Expand My Results value (no search) |
 | `changeSearchInFullTextToggleValue` | Sets full-text toggle value (no search) |
 | `clearAllFiltersAction` | Resets all active filters |
+| `applyIncludeFilterForHyperTextLikingAction` | Applies an include filter from hypertext-linking facets (reducer-only) |
+| `updateLastSearchTermsAction` | Upserts a term into the last-search-terms list |
+| `updateFullDisplayRecordYouCameFromAction` | Records the full-display record the user navigated from |
+| `setIsResourceRecommenderExpandedAction` | Controls Resource Recommender panel expansion |
 | `resourceTypeFilterSelectedAction` | Selects a resource type filter (triggers new search; requires `index` for host focus management — pass `0` if unknown) |
 
 #### ✅ Exported success/failed actions — terminal writes with no downstream effects
@@ -664,10 +714,10 @@ Some `*Success` and `*Failed` actions **are** exported. These are safe because t
 |---|---|
 | `searchSuccessAction` | Writes search results to the store; no effect fires on it |
 | `searchFailedAction` | Sets an error/loading flag; no effect fires on it |
-| `filtersSuccessAction` | Writes filter data to the store; no effect fires on it |
+| `filtersSuccessAction` | Writes filter data to the store; the host's `updateFilterStateForNewSearch$` effect derives filter UI state from it (pure state mapping, no HTTP) |
 | `filterFailedAction` | Sets a filter error flag; no effect fires on it |
 
-> **Not all success actions are safe.** The export list is the definitive answer. For example, `deliverySuccessAction` is **not** exported because a host effect listens to it and fires a second HTTP call. See the chain below.
+> **Not all success actions are safe.** The export list is the definitive answer. For example, `deliverySuccessAction` is **not** exported because a host effect listens to it and fires a second HTTP call. See the chain below. `resetUserSettingsSuccessAction` was removed in 2026.6.1 for the same class of reason — a host effect navigates to `/home` and resets the interface language when it fires.
 
 #### ❌ Excluded — effect outputs that feed downstream effects
 
@@ -728,6 +778,26 @@ constructor() {
 ---
 
 ## API reference
+
+### `PrimoStateService` (facade)
+
+The recommended entry point. Each property is the corresponding service
+instance, so the per-service references below apply verbatim:
+
+| Property | Type | Documented under |
+|---|---|---|
+| `primo.search` | `SearchStateService` | [`SearchStateService`](#searchstateservice) |
+| `primo.filters` | `FilterStateService` | [`FilterStateService`](#filterstateservice) |
+| `primo.user` | `UserStateService` | [`UserStateService`](#userstateservice) |
+| `primo.config` | `ViewConfigStateService` | [`ViewConfigStateService`](#viewconfigstateservice) |
+| `primo.entity` | `EntityStateService` | [`EntityStateService`](#entitystateservice) |
+| `primo.account` | `AccountStateService` | [`AccountStateService`](#accountstateservice) |
+
+> The individual `*StateService` classes are deprecated for direct injection
+> since 2026.6.1 (they remain exported and functional). New code should
+> inject `PrimoStateService`.
+
+---
 
 ### `UserStateService`
 
@@ -790,7 +860,9 @@ constructor() {
 | `selectIsReportAProblemOpen$()` | `Observable<boolean>` | Report a Problem panel state |
 | `selectCurrentSearchTerm$()` | `Observable<string \| undefined>` | Current saved search term |
 | `selectSelectedSortBy$()` | `Observable<string \| null>` | Selected sort-by field |
-| `selectIsOffsetLimitExceeded$()` | `Observable<boolean>` | Offset limit exceeded (pagination cap reached) |
+| `selectLastSearchTerms$()` | `Observable<string[]>` | Last search terms (autocomplete history) |
+| `selectFullDisplayRecordYouCameFrom$()` | `Observable<string>` | Record ID the user navigated from |
+| `selectIsResourceRecommenderExpanded$()` | `Observable<boolean>` | Resource Recommender panel expansion |
 
 #### Signals
 | Method | Returns | Initial value |
@@ -811,7 +883,9 @@ constructor() {
 | `isReportAProblemOpenSignal()` | `Signal<boolean>` | `false` |
 | `currentSearchTermSignal()` | `Signal<string \| undefined>` | `undefined` |
 | `selectedSortBySignal()` | `Signal<string \| null>` | `null` |
-| `isOffsetLimitExceededSignal()` | `Signal<boolean>` | `false` |
+| `lastSearchTermsSignal()` | `Signal<string[]>` | `[]` |
+| `fullDisplayRecordYouCameFromSignal()` | `Signal<string>` | `''` |
+| `isResourceRecommenderExpandedSignal()` | `Signal<boolean>` | `false` |
 
 #### Snapshots
 | Method | Returns |
@@ -832,10 +906,12 @@ constructor() {
 | `isReportAProblemOpen()` | `Promise<boolean>` |
 | `getCurrentSearchTerm()` | `Promise<string \| undefined>` |
 | `getSelectedSortBy()` | `Promise<string \| null>` |
-| `isOffsetLimitExceeded()` | `Promise<boolean>` |
+| `getLastSearchTerms()` | `Promise<string[]>` |
+| `getFullDisplayRecordYouCameFrom()` | `Promise<string>` |
+| `isResourceRecommenderExpanded()` | `Promise<boolean>` |
 
 #### Dispatch helpers
-`search(params, type?)` · `clearSearch()` · `setPageLimit(n)` · `setPageNumber(n)` · `setSortBy(s)` · `setIsSavedSearch(b)` · `setSearchNotificationMessage(s)` · `saveCurrentSearchTerm(s)` · `setDisplaySummary(b)` · `setIsSnackBarOpen(b)` · `setIsReportAProblemOpen(b)` · `toggleExpandMyResults(b)` · `toggleSearchInFullText(b)` · `dispatch(action)`
+`search(params, type?)` · `clearSearch()` · `setPageLimit(n)` · `setPageNumber(n)` · `setSortBy(s)` · `setIsSavedSearch(b)` · `setSearchNotificationMessage(s)` · `saveCurrentSearchTerm(s)` · `addLastSearchTerm(s)` · `setFullDisplayRecordYouCameFrom(s)` · `setDisplaySummary(b)` · `setIsSnackBarOpen(b)` · `setIsReportAProblemOpen(b)` · `setIsResourceRecommenderExpanded(b)` · `toggleExpandMyResults(b)` · `toggleSearchInFullText(b)` · `dispatch(action)`
 
 ---
 
@@ -878,7 +954,7 @@ constructor() {
 | `getResourceTypeFilterStatus()` | `Promise<LoadingStatus>` |
 
 #### Dispatch helpers
-`loadFilters(params, facetsCacheKey?)` · `updateSortByParam(s)` · `includeFilter(group, value, labels?)` · `excludeFilter(group, value, labels?)` · `applyMultiSelectFilters(filters)` · `clearAllFilters(params?)` · `selectResourceType(model, index?)` · `setFiltersOpen(b)` · `setRememberAll(b)` · `dispatch(action)`
+`loadFilters(params, facetsCacheKey?)` · `updateSortByParam(s)` · `includeFilter(group, value, labels?)` · `excludeFilter(group, value, labels?)` · `applyMultiSelectFilters(filters)` · `clearAllFilters(params?, isSideBarFilters?, isQuickFilters?)` · `toggleQuickFilter(code)` · `addQuickFilter(code)` · `removeQuickFilter(code)` · `selectResourceType(model, index?)` · `setFiltersOpen(b)` · `setRememberAll(b)` · `dispatch(action)`
 
 ---
 
@@ -1381,6 +1457,8 @@ Normalised record data structure. Most fields are string-array dictionaries to a
 | `isbn` | `string[]` |
 | `title` | `string[]` |
 | `creatorcontrib` | `string[]` |
+| `crsid` | `string[]` *(new in 2026.6.1 — course IDs)* |
+| `cdparentid` | `string[]` *(new in 2026.6.1 — collection-discovery parent IDs)* |
 
 #### `PnxDelivery`
 
@@ -1513,11 +1591,14 @@ One electronic access option (full text, open access, etc.).
 | `displayInEmbedViewer` | `boolean?` *(new in 2026.5.1)* |
 | `fromNetwork` | `boolean?` |
 | `filteredByAfGroups` | `string?` |
-| `supported` | `boolean?` |
 | `serviceNotAvailable` | `string?` *(new in 2026.4.1)* |
 | `serviceNotAvailableReason` | `string?` *(new in 2026.4.1)* |
 | `researchFileList` | `EsploroResearchFile[]?` *(new in 2026.4.1)* |
 | `researchLinksList` | `EsploroResearchLink[]?` *(new in 2026.4.1)* |
+| `collapse` | `boolean?` *(new in 2026.6.1)* |
+| `shouldDisplayInDigitalViewer` | `boolean?` *(new in 2026.6.1)* |
+
+> `supported?: boolean` was removed in 2026.6.1 — the field no longer exists on the host model.
 
 ##### `EsploroResearchFile` / `EsploroResearchLink`
 
@@ -1762,6 +1843,41 @@ A filter chip shown in the search top bar.
 | `filterType` | `FilterType?` |
 | `mergedLabel` | `string[] \| undefined` |
 
+##### "More From the Same" types
+
+*New in 2026.6.1 — types backing the host's "More From the Same course / collection" feature.*
+
+```typescript
+interface CourseInfo {
+  fullCrsinfo: string;
+  courseId?: string;
+  courseCodeAndSection?: string;
+  courseName?: string;
+  publicationStatus?: string;
+  courseInst?: string;
+}
+
+interface CollectionRecordData {
+  type?: string;
+  collectionId?: string;
+  institution?: string;
+}
+
+interface RelatedCourse {
+  name: string;
+  link?: string;
+  isLinkable: boolean;
+}
+
+interface RelatedCollection {
+  name: string;
+  id: string;
+}
+
+const MORE_FROM_THE_SAME_TYPE = { COURSE: 'course', COLLECTION: 'collection' } as const;
+type MoreFromTheSameType = typeof MORE_FROM_THE_SAME_TYPE[keyof typeof MORE_FROM_THE_SAME_TYPE];
+```
+
 ---
 
 #### Enrichment & citation types
@@ -1951,6 +2067,7 @@ Top-level config object. Key properties:
 | `ndeAddons` | `Record<string, NdeAddonData>` |
 | `patron_default_sort` | `boolean` *(new in 2026.4.1)* |
 | `searchWithinJournalConfig` | `SearchWithinJournal` *(new in 2026.4.1)* |
+| `is_ip_allow_to_login` | `boolean?` *(new in 2026.6.1)* |
 
 #### `SearchWithinJournal`
 
@@ -1992,9 +2109,15 @@ Fields added in 2026.5.1:
 | `expand_results_toggles_visible` | `boolean` |
 | `export_all_for_user_email_only` | `boolean` |
 
+Fields added in 2026.6.1:
+
+| Field | Type |
+|---|---|
+| `rapido_hide_blank_ill_from_link_menu` | `boolean` |
+
 #### `MappingTables`
 
-~50+ mapping tables used by the host for display transformations (resource types, icons, labels, etc.). Added in 2026.5.1: `'Resource Sharing Additional Information': MappingTable[]`.
+~50+ mapping tables used by the host for display transformations (resource types, icons, labels, etc.). Added in 2026.5.1: `'Resource Sharing Additional Information': MappingTable[]`. Added in 2026.6.1: `'Authority Search Operators': MappingTable[]`.
 
 #### `PrimoView`
 
@@ -2217,7 +2340,7 @@ Defined in `src/models/analytics.model.ts`. Const maps for consistent analytics 
 
 #### `EventsNames`
 
-Const object mapping ~53 event names (added in 2026.5.1: `TOPIC_OVERVIEW`, `LEGANTO_COURSE_INFO`, `EXPORT_ALL`), e.g.:
+Const object mapping ~54 event names (added in 2026.5.1: `TOPIC_OVERVIEW`, `LEGANTO_COURSE_INFO`, `EXPORT_ALL`; added in 2026.6.1: `MORE_FROM_THE_SAME`), e.g.:
 
 ```typescript
 import { EventsNames } from '@libis/primo-shared-state';
@@ -2257,6 +2380,8 @@ import { searchAction, loadFiltersAction, setDecodedJwt } from '@libis/primo-sha
 | `updateIsSavedSearch` | `[Search] Update Is Saved Search` | `{ isSavedSearch: boolean }` |
 | `setSearchNotificationMsg` | `[search] Set Search Notification Message` ¹ | `{ msg: string }` |
 | `saveCurrentSearchTermAction` | `[Search] save current search term` | `{ searchTerm: string }` |
+| `updateLastSearchTermsAction` *(new in 2026.6.1)* | `[Search] Upsert Last Search Term` | `{ lastSearchTerm: string }` |
+| `updateFullDisplayRecordYouCameFromAction` *(new in 2026.6.1)* | `[Search] Update record you came from` | `{ fullDisplayRecordYouCameFrom: string }` |
 
 ¹ Note: action type string uses lowercase `[search]`, not `[Search]` — match exactly when using `ofType`.
 
@@ -2290,7 +2415,11 @@ import { searchAction, loadFiltersAction, setDecodedJwt } from '@libis/primo-sha
 | `removeIncludeFilterAction` *(new in 2026.4.1)* | `[Filter Group Dropdown] Remove Include Filter` | `{ filterValue: string; filterGroup: string; mergedLabels: string[] }` |
 | `removeExcludeFilterAction` *(new in 2026.4.1)* | `[Filter Group Dropdown] Remove Exclude Filter` | `{ filterValue: string; filterGroup: string; mergedLabels: string[] }` |
 | `applyMultiSelectFiltersAction` | `[Filter Side Bar] Apply Multi-select Filters` | `{ multiSelectedFilters: FilterGroupValue[] }` |
-| `clearAllFiltersAction` | `[Filters] Clear All Filter` | `{ searchParams?: SearchParams }` |
+| `quickFilterAction` *(new in 2026.6.1)* | `[Quick Filters] Quick Filter Clicked` | `{ quickFilterCode: string }` |
+| `addQuickFilterAction` *(new in 2026.6.1)* | `[Quick Filters] Add Quick Filter` | `{ quickFilterCode: string }` |
+| `removeQuickFilterAction` *(new in 2026.6.1)* | `[Quick Filters] Remove Quick Filter` | `{ quickFilterCode: string }` |
+| `applyIncludeFilterForHyperTextLikingAction` *(new in 2026.6.1)* | `[Hyper text linking facet] Include Filter` | `{ filterGroup: string; filterValue: string }` |
+| `clearAllFiltersAction` | `[Filters] Clear All Filter` | `{ searchParams?: SearchParams; isSideBarFilters?: boolean; isQuickFilters?: boolean }` *(analytics-origin flags added in 2026.6.1)* |
 | `resourceTypeFilterSelectedAction` | `[Resource Type Filter Bar] Resource Type Filter Bar Selected` | `{ selectedResourceType: ResourceTypeFilterModel; index: number }` *(index added in 2026.5.3 — pass `0` if unknown)* |
 | `setIsFiltersOpenAction` | `[Filter Side Bar] Set Is Filters Open` | `{ isFiltersOpen: boolean }` |
 | `rememberAllChangeValueAction` | `[Filter Side Bar] Remember All button change value` | `{ newValue: boolean }` |
@@ -2302,7 +2431,6 @@ import { searchAction, loadFiltersAction, setDecodedJwt } from '@libis/primo-sha
 | `setDecodedJwt` | `[User] Set Decoded Jwt` | `{ decodedJwt: DecodedJwt }` |
 | `resetJwtAction` | `[User] reset jwt` | `{ logoutReason: LogoutReason; url?: string }` |
 | `loadUserSettingsSuccessAction` | `[User-Settings] save user settings` | `{ userSettings: UserSettings; isNewSession: boolean }` |
-| `resetUserSettingsSuccessAction` | `[User-Settings] reset user settings success` | — |
 | `doneChangeUserSettingsLanguageAction` | `[User-Settings] Done Change User Settings Language` | `{ value: string }` |
 | `doneSaveHistoryToggleAction` | `[User-Settings] Done Update Save history toggle ` ³ | `{ value: string }` |
 | `doneUseHistoryToggleAction` | `[User-Settings] Done Update Use history toggle ` ³ | `{ value: string }` |
@@ -2343,7 +2471,7 @@ This package uses `YYYY.M.regenerateCount` versioning (e.g. `2026.4.1`):
 # After regenerating, build and pack:
 npm run build
 npm pack
-# → libis-primo-shared-state-2026.5.3.tgz
+# → libis-primo-shared-state-2026.6.1.tgz
 ```
 
 ## Regenerating this package

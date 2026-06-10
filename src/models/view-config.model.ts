@@ -44,6 +44,7 @@ export interface ViewConfigData {
   limited_patrons_in_alma_starter:   boolean;
   limited_patrons_acq_in_alma_starter: boolean;
   searchWithinJournalConfig:         SearchWithinJournal;
+  is_ip_allow_to_login?:             boolean;
 }
 
 export interface SearchWithinJournal {
@@ -209,6 +210,7 @@ export interface MappingTables {
   'May Also Be Found At':                                MappingTable[];
   'Authority Search Scopes':                             MappingTable[];
   'Authority Search Sort':                               MappingTable[];
+  'Authority Search Operators':                          MappingTable[];
   'Resource Sharing Additional Information':             MappingTable[];
 }
 
@@ -402,6 +404,7 @@ export interface SystemConfiguration {
   hide_rapido_offers_tiles: boolean;
   rapido_hide_section_when_user_not_logged_in: boolean;
   rapido_hide_blank_form_link_when_user_not_logged_in: boolean;
+  rapido_hide_blank_ill_from_link_menu: boolean;
   hide_rapido_section_for_hide_service_rs: boolean;
   rapido_SA_rapidill_mode: boolean;
   rapido_SA_enabled: boolean;

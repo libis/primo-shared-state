@@ -30,10 +30,20 @@
  * - triggerExportAllSendEmail — downstream effect fires HTTP email-send call
  * - patronDefaultSortUpdateAction — downstream effect in search.effects.ts saves sort preference via HTTP
  * - selectAllResourceTypeFilterAction — downstream effect in filter.effects.ts triggers a new search
+ * - resetUserSettingsSuccessAction — host effect restoreLanguageToInterfaceLanguage$
+ *   navigates the user to /home and resets the interface language (exported until
+ *   2026.5.3; removed as a safety correction in 2026.6.1)
+ * - simpleSearchResetAction — downstream effect resetAfterSummary$ fires a new search
+ * - initPcAvailabilityAndSearchInFtToggles — downstream effect reads config and re-dispatches
+ * - clearStateExceptCurrentEntity — entity-collection surgery on server-authoritative
+ *   search results; host-internal full-display optimisation
  *
  * REMOVED IN 2026.4.1:
  * - fetchUnpaywallLinksAction — no longer exists in the host; the host
  *   now resolves unpaywall links inline via Doc.pnx.links.linkunpaywall.
+ *
+ * REMOVED IN 2026.6.1:
+ * - resetUserSettingsSuccessAction — see safety note above.
  */
 
 import { createAction, props } from '@ngrx/store';
@@ -103,6 +113,18 @@ export const setSearchNotificationMsg = createAction(
 export const saveCurrentSearchTermAction = createAction(
   '[Search] save current search term',
   props<{ searchTerm: string }>()
+);
+
+/** SAFE: Pure UI-state write — upserts a term into the last-search-terms list (used for autocomplete suggestions). Reducer-only; no host effect listens. */
+export const updateLastSearchTermsAction = createAction(
+  '[Search] Upsert Last Search Term',
+  props<{ lastSearchTerm: string }>()
+);
+
+/** SAFE: Pure UI-state write — records which full-display record the user navigated from, for back-to-results focus restoration. Reducer-only; no host effect listens. */
+export const updateFullDisplayRecordYouCameFromAction = createAction(
+  '[Search] Update record you came from',
+  props<{ fullDisplayRecordYouCameFrom: string }>()
 );
 
 /** SAFE: Pure UI-state write — updates the sort-by parameter in filter state. */
@@ -199,10 +221,38 @@ export interface FilterGroupValue {
   filterValue: string;
 }
 
-/** SAFE: Pure UI reset — clears all active filters and optionally triggers new search. */
+/**
+ * SAFE: Pure UI reset — clears all active filters and optionally triggers new search.
+ * `isSideBarFilters` / `isQuickFilters` only tag the analytics event with where the
+ * clear originated; omit them when dispatching programmatically.
+ */
 export const clearAllFiltersAction = createAction(
   '[Filters] Clear All Filter',
-  props<{ searchParams?: SearchParams }>()
+  props<{ searchParams?: SearchParams; isSideBarFilters?: boolean; isQuickFilters?: boolean }>()
+);
+
+/** SAFE: Command — toggles a quick filter chip (adds it if absent, removes it if active). Host effect triggers the filtered search. */
+export const quickFilterAction = createAction(
+  '[Quick Filters] Quick Filter Clicked',
+  props<{ quickFilterCode: string }>()
+);
+
+/** SAFE: Command — adds a quick filter. Host effect triggers the filtered search. */
+export const addQuickFilterAction = createAction(
+  '[Quick Filters] Add Quick Filter',
+  props<{ quickFilterCode: string }>()
+);
+
+/** SAFE: Command — removes a quick filter. Host effect triggers the filtered search. */
+export const removeQuickFilterAction = createAction(
+  '[Quick Filters] Remove Quick Filter',
+  props<{ quickFilterCode: string }>()
+);
+
+/** SAFE: Pure state write — applies an include filter coming from hypertext-linking facets. Reducer-only; no host effect listens. */
+export const applyIncludeFilterForHyperTextLikingAction = createAction(
+  '[Hyper text linking facet] Include Filter',
+  props<{ filterGroup: string; filterValue: string }>()
 );
 
 /**
@@ -270,11 +320,6 @@ export const setDecodedJwt = createAction(
 export const loadUserSettingsSuccessAction = createAction(
   '[User-Settings] save user settings',
   props<{ userSettings: UserSettings; isNewSession: boolean }>()
-);
-
-/** SAFE: Pure state reset — clears user settings to default. */
-export const resetUserSettingsSuccessAction = createAction(
-  '[User-Settings] reset user settings success'
 );
 
 /** SAFE: Terminal success action — stores the updated language preference. */

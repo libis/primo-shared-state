@@ -1,5 +1,43 @@
 # Usage Examples
 
+## The facade: one injection point (recommended since 2026.6.1)
+
+`PrimoStateService` groups the whole package API into logical domains. New
+code should inject it instead of the individual `*StateService` classes
+(those remain exported but are deprecated for direct injection — the
+examples further down still compile, and each domain property on the facade
+*is* the same service instance, so everything they show applies unchanged):
+
+```typescript
+import { Component, inject, computed } from '@angular/core';
+import { PrimoStateService } from '@libis/primo-shared-state';
+
+@Component({
+  selector: 'app-remote-widget',
+  template: `
+    <p *ngIf="isLoggedIn()">Welcome, {{ userName() }}</p>
+    <p>{{ total() }} results in {{ institution() }}</p>
+    <button (click)="clearFilters()">Clear filters</button>
+  `
+})
+export class RemoteWidgetComponent {
+  private primo = inject(PrimoStateService);
+
+  // Signals — one per domain, same naming as the per-service API
+  isLoggedIn  = this.primo.user.isLoggedInSignal();
+  userName    = this.primo.user.userNameSignal();
+  total       = this.primo.search.totalResultsSignal();
+  institution = this.primo.config.institutionNameSignal();
+
+  clearFilters(): void {
+    this.primo.filters.clearAllFilters();
+  }
+}
+```
+
+Domain map: `primo.search` / `primo.filters` / `primo.user` (read + typed
+dispatch) and `primo.config` / `primo.entity` / `primo.account` (read-only).
+
 ## Complete Remote Component Example
 
 Here's a complete example of a remote component that reads from the shared state:
