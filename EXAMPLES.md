@@ -829,6 +829,130 @@ export class AccountDashboardComponent {
 }
 ```
 
+## Patron Block Messages (new in 2026.8.1)
+
+`AccountState` now carries the ILS block messages themselves, not just the
+counter. `blocksListSignal()` starts as `[]` and fills in once the host's
+account effect has fetched them — check `blocksStatusSignal()` to tell "no
+blocks" apart from "not loaded yet".
+
+```typescript
+import { Component, computed, inject } from '@angular/core';
+import { PrimoStateService, BlockMessage } from '@libis/primo-shared-state';
+
+@Component({
+  selector: 'app-patron-blocks',
+  template: `
+    @switch (status()) {
+      @case ('loading') { <p>Checking your account…</p> }
+      @case ('fail')    { <p>Could not load account blocks.</p> }
+      @default {
+        @if (blocks().length) {
+          <div class="blocks" role="alert">
+            <h3>{{ blocks().length }} issue(s) on your account</h3>
+            @for (group of byInstitution(); track group.institution) {
+              <section>
+                <h4>{{ group.institution }}</h4>
+                @for (block of group.blocks; track block.text) {
+                  <p class="block" [attr.data-type]="block.type">{{ block.text }}</p>
+                }
+              </section>
+            }
+          </div>
+        } @else {
+          <p>No blocks on your account.</p>
+        }
+      }
+    }
+  `,
+})
+export class PatronBlocksComponent {
+  private primo = inject(PrimoStateService);
+
+  blocks = this.primo.account.blocksListSignal();
+  status = this.primo.account.blocksStatusSignal();
+
+  /** Same grouping the host's own blocks page applies. */
+  byInstitution = computed(() => {
+    const groups = new Map<string, BlockMessage[]>();
+    for (const block of this.blocks()) {
+      const key = block.ilsinstitutionname || '';
+      const bucket = groups.get(key);
+      if (bucket) {
+        bucket.push(block);
+      } else {
+        groups.set(key, [block]);
+      }
+    }
+    return [...groups].map(([institution, blocks]) => ({ institution, blocks }));
+  });
+}
+```
+
+The Observable and Promise forms are available too:
+
+```typescript
+this.primo.account.selectBlocksList$().subscribe(blocks => console.log(blocks.length));
+const blocks = await this.primo.account.getBlocksList();
+```
+
+---
+
+## Featured Results Bar (new in 2026.8.1)
+
+The host attaches a featured-results payload to the search response when the
+active scope has one configured. It lives on the search metadata, so no extra
+request is needed — and neither featured-results action is exported, since the
+host owns that data.
+
+```typescript
+import { Component, computed, inject } from '@angular/core';
+import {
+  PrimoStateService,
+  FEATURED_RESULTS_MIN_ITEMS,
+  FeaturedResultItem,
+} from '@libis/primo-shared-state';
+
+@Component({
+  selector: 'app-featured-results',
+  template: `
+    @if (featured(); as bar) {
+      <section class="featured-bar">
+        <h3>{{ bar.barTitle }} ({{ bar.totalHits }})</h3>
+        @for (item of bar.featuedResultsItems; track item.recordId) {
+          <article>
+            <img [src]="item.thumbnailLinks[0]" alt="" />
+            <h4>{{ item.title }}</h4>
+            <p>{{ item.generalData }}</p>
+          </article>
+        }
+      </section>
+    }
+  `,
+})
+export class FeaturedResultsComponent {
+  private primo = inject(PrimoStateService);
+
+  private meta = this.primo.search.searchMetaDataSignal();
+
+  /**
+   * `featuedResultsItems` is spelled that way in the backend JSON — the typo is
+   * carried through the host model, so the package preserves it verbatim.
+   */
+  featured = computed(() => {
+    const data = this.meta()?.featuredResultJson;
+    if (!data) return null;
+    return data.featuedResultsItems.length >= FEATURED_RESULTS_MIN_ITEMS ? data : null;
+  });
+
+  trackTypes(items: FeaturedResultItem[]): string[] {
+    return [...new Set(items.map(i => i.type))];
+  }
+}
+```
+
+---
+
 ## Using Analytics Constants
 
 Consistent event and page-name tracking across remotes using the shared analytics const maps.

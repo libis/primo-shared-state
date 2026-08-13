@@ -1,5 +1,57 @@
 # Changelog
 
+## 2026.8.1 — 2026-08-13
+
+Regenerated from the August 2026 NDE extract (`src_bootstrap_ts.b7377ab519c2c158`), indexed with `npm run index-state` (34 slice directories scanned; 31 of them register a reducer with `StoreModule.forRoot`).
+
+No action drift: all 48 exported action creators still exist in the host with byte-identical type strings and matching payload shapes.
+
+### Added
+
+- **New model file `src/models/featured-results.model.ts`** — `FeaturedResultItem`, `FeaturedResultsData`, `FEATURED_RESULTS_MIN_ITEMS`. Backs the host's new `featured-results` slice. `featuedResultsItems` is spelled that way on purpose: the typo comes from the backend JSON and is preserved verbatim in the host model.
+- **`store.model.ts`** — new host slice `featured-results` added to `AppState` as a **fully-typed** `FeaturedResultsState` (not a stub), since its payload type is already public via `SearchData.featuredResultJson`. Opaque-stub count is unchanged at 24.
+- **`store.model.ts` — `AccountState`** gained `blocksList: BlockMessage[]` and `blocksStatus: LoadingStatus`.
+- **`account.model.ts`** — new `BlockMessage` interface (`ilsinstitutioncode`, `ilsinstitutionname`, `text`, `type`); `MappedFineItem.ilsinstitutioncode?: string` (set for cross-network fines); `accountViewModel.isBlocksBadgeIndication: boolean | undefined`.
+- **`search.model.ts`** — `SearchData.featuredResultJson?: FeaturedResultsData`; `Adaptor.PrimoVeDeepSearch` (the host's spelling) added alongside the existing `PrimoVEDeepSearch`, which is retained as a `@deprecated` casing alias with an identical value so existing code keeps compiling.
+- **`view-config.model.ts`** — `ViewConfigData.landingPageShowcaseQueryUrl?: string`; `Customization.loadLandingPage?: boolean`; `SystemConfiguration` gained `use_participating_items_for_non_rapido_requests`, `include_library_hours_booking_request`, `open_locations_filterBy_by_default`, `calendar_week_start: number`, `hide_update_login_credentials_external_users`; `Mainview.ariaLabel$?` / `toolTip$?` (`Observable<string>`, optional here because the host attaches them at runtime rather than reading them from the config JSON).
+- **`analytics.model.ts`** — `EventsNames` gained `BLOCKS_PAGE_ACTIONS`, `FEATURED_RESULTS_BAR`, `RESULTS_PER_PAGE_CHANGED`.
+- **`user.model.ts`** — `UserSettings` gained explicit optional declarations for `advanced_mode`, `beacon022`, `pr_discipline`, `pr_enabled`, `pr_recentness`, `smsnumber`, `patronsDefaultSort`. These were always reachable through the index signature; naming them gets autocomplete and type-checking. Nothing was removed.
+- **`filter.model.ts`** — `PreviousSearchQuery` interface extracted from the inline shape of `FilterState.previousSearchQuery` (same fields) so selectors can return it by name.
+- **`AccountStateService`** — `blocksList` and `blocksStatus` selectors, all three variants each: `selectBlocksList$()` / `blocksListSignal()` / `getBlocksList()` and `selectBlocksStatus$()` / `blocksStatusSignal()` / `getBlocksStatus()`.
+
+### Changed — API symmetry
+
+An audit found four fields a remote could **write** through an exported action or dispatch helper but could not **read** back, plus three exported actions with no typed dispatch wrapper. Filled in the same pass; all additions ship the full Observable / Signal / Promise triple.
+
+- **`SearchStateService`** — new selectors `isSavedSearch` (write path existed via `setIsSavedSearch()`), `presentNotification` (via `setPresentNotificationAction`), plus `filterFacets` and `filterStatus` over the nested `Search.filter` object. New dispatch helpers: `setPresentNotification(b)`, `setExpandMyResultsValue(b)`, `setSearchInFullTextValue(b)`. The last two dispatch the *value changed* actions (state write only), as opposed to the existing `toggleExpandMyResults(b)` / `toggleSearchInFullText(b)`, which dispatch the *pressed* actions and cause the host to run a fresh search.
+- **`UserStateService`** — new selectors `logoutReason` (write path existed via `resetLogoutReason()`), `loginFromState` (via `setLoginFromState()`), `status`, and `userSettingsStatus`. New dispatch helper `logout(reason, url?)` wrapping the already-exported `resetJwtAction`.
+- **`FilterStateService`** — new selectors `status` and `previousSearchQuery`. New dispatch helpers `removeIncludeFilter()`, `removeExcludeFilter()`, `includeFilterFromHyperTextLinking()`, wrapping `removeIncludeFilterAction`, `removeExcludeFilterAction`, and `applyIncludeFilterForHyperTextLikingAction` — all three were already exported but had no typed wrapper.
+
+### Changed — safety gate
+
+- **`shared-actions.ts` exclusion list expanded** to name every unexported action in the `Search`, `filters`, `user`, and `featured-results` slices, so the gate is auditable rather than implicit. No action was added to or removed from the export set — it remains 48.
+- **`patronDefaultSortUpdateAction` exclusion rationale corrected.** The previous note claimed a downstream effect in `search.effects.ts` saves the sort preference over HTTP. That has the direction backwards: no effect listens to this action; `search.effects.ts` *emits* it after `userSettingsService.saveSelectedPatronDefaultSort()` has already succeeded. It stays excluded for a different reason — dispatching it writes `userSettings.patronsDefaultSort` into the store **without** persisting server-side, desyncing the store from the ILS.
+- **New exclusions documented** (all verified against the August extract): `setNewFilterStateAction`, `handleDeepLinkForFiltersAction`, `handleDeepLinkForResourceTypeFilterAction`, `resourceStatusUpdateAction`, `loadFeaturedResultsAction`, `clearFeaturedResultsAction`, `saveSearchHistorySuccessAction`, `displayFullRecordAnalyticsSuccess`/`Failure`, `loadJwtFailedAction`, `saveLoggedJwtAction`, `loadLoggedUserJwtAction`, `loadUserSettingsFailedAction`, `loadPreferLanguageSuccessAction`, `restoreLanguageToInterfaceLanguage`, `removeSearchHistoryInSessionStorageSuccessAction`.
+
+### ⚠️ Breaking removals (confirmed by user before applying)
+
+- **`SearchParams.searchTerm?: string`** — removed. This field was **never** part of the host's `SearchParams`; it was added package-side in 2026.3.1 and the host has always ignored it, so any remote setting it was already silently broken at runtime — the search that ran did not use the value. Removing it converts that silent no-op into a compile error.
+
+  **Affected code:** any remote that reads or writes `searchParams.searchTerm`. **Migration:** put the query in `q`; to record a term in the user's search history, call `SearchStateService.saveCurrentSearchTerm(term)` (dispatches `saveCurrentSearchTermAction`), which is what the host actually reads.
+
+  Nothing else was removed. `Adaptor.PrimoVEDeepSearch` was **not** removed despite the host using different casing — the correctly-cased member was added beside it.
+
+### Tooling (not shipped in the tarball)
+
+- **`.github/workflows/release.yml`** — pushing a `YYYY.M.N` tag now builds, packs, and publishes a GitHub Release with the tarball attached and this file's matching `## <version>` section as the release notes. Three gates run before anything is built: strict tag-format check, `package.json` version must equal the tag, and `package-lock.json` version must equal the tag. Missing release notes are a warning with a fallback body, not a failure. No npm-registry publish — none has ever been configured for this package, and the documented deployment path is the tarball.
+- **`package-lock.json` version synced to `2026.8.1`.** It was still on `2026.6.1`, which would have made `npm ci` fail outright in CI. Regenerations must now run `npm install --package-lock-only` after bumping `package.json`; the workflow enforces this.
+
+### Documentation
+
+- **README.md** — new "Cutting a release" section under Versioning documenting the tag format, the three files that must agree on the version, and the tarball-not-registry distribution model; `UserStateService`, `SearchStateService`, `FilterStateService`, and `AccountStateService` reference tables updated for every new selector and dispatch helper (Observables / Signals / Snapshots tables each); new "Featured-results types", "`PreviousSearchQuery`", "`BlockMessage`", and "Other view-config fields added in 2026.8.1" sections; `SearchParams` table row for `searchTerm` removed and replaced with a migration note; `SearchData` gained a `featuredResultJson` row; `Adaptor` table documents both enum members and which to prefer; `SystemConfiguration` gained a "Fields added in 2026.8.1" table; `UserSettings` table gained the seven newly-named fields with a note that they were always reachable via the index signature; `accountViewModel` gained `isBlocksBadgeIndication`; `MappedFineItem` note for `ilsinstitutioncode`; `EventsNames` count corrected 54 → 57; typed-store prose corrected from "Six slices are fully typed" to seven (adding `featured-results`); "What's inside" models row updated; install/pack version strings bumped to `2026.8.1`.
+- **EXAMPLES.md** — two new sections: "Patron Block Messages", showing `blocksListSignal()` / `blocksStatusSignal()` with the host's own per-institution grouping and the status check that distinguishes "no blocks" from "not loaded yet"; and "Featured Results Bar", reading `featuredResultJson` off the search metadata and gating on `FEATURED_RESULTS_MIN_ITEMS`.
+- **Verification** — every symbol imported in README.md and EXAMPLES.md code blocks was checked to exist in `dist/index.d.ts`, and every documented `*StateService` method call was checked against the built type declarations. A probe file exercising all new APIs (plus a `@ts-expect-error` asserting `SearchParams.searchTerm` is gone) compiles clean under `strict`.
+
 ## 2026.6.1 — 2026-06-10
 
 Regenerated from the June 2026 NDE extract (`src_bootstrap_ts.ffc1345247cad134`).

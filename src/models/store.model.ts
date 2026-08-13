@@ -17,6 +17,10 @@
  *   - viewConfig          (ViewConfigState)
  *   - linked-data-entity  (LinkedDataEntityState)
  *
+ * `featured-results` (FeaturedResultsState) is also fully typed even though no
+ * service targets it — its payload type is already public via
+ * `SearchData.featuredResultJson`.
+ *
  * The remaining 24 slices are declared as opaque
  * `Record<string, unknown>` aliases. This keeps `AppState` complete (so
  * consumers who write their own selectors against an unused slice still
@@ -35,7 +39,7 @@
  * mix of camelCase (`viewConfig`, `bulkActions`, `collectionDiscovery`,
  * `routerState`), PascalCase (`Search`, `Delivery`), kebab-case
  * (`authority-search`, `browse-search`, `citation-trails`, `database-search`,
- * `full-display`, `journal-search`, `linked-data-entity`, `more-from-the-same`,
+ * `featured-results`, `full-display`, `journal-search`, `linked-data-entity`, `more-from-the-same`,
  * `natural-language-search`, `newspaper-search`, `ngrs-general`,
  * `ngrs-record-data`, `research-assistant`, `citation-trails`), and lowercase
  * (`account`, `atoz`, `categories`, `citations`, `favorites`, `filters`,
@@ -57,12 +61,14 @@ import {
   RelatedEntitiesMultiLangDataList,
 } from './entity.model';
 import {
+  BlockMessage,
   LoanItem,
   MappedFineItem,
   MappedInstItem,
   MappedRequestItem,
   SearchHistoryItem,
 } from './account.model';
+import { FeaturedResultsData } from './featured-results.model';
 
 /* ── Fully-typed slices ─────────────────────────────────────────────────── */
 
@@ -124,8 +130,10 @@ export interface AccountState {
   isRequestsBadgeIndication: boolean | undefined;
   finesCounter: number | undefined;
   isFinesBadgeIndication: boolean | undefined;
+  blocksList: BlockMessage[];
   blocksCounter: number | undefined;
   isBlocksBadgeIndication: boolean | undefined;
+  blocksStatus: LoadingStatus;
   favoritesCounter: number | undefined;
   searchHistoryCounter: number | undefined;
   savedSearchesCounter: number | undefined;
@@ -165,6 +173,16 @@ export interface AccountState {
   finesFilteredListCounter: number;
   finesStatus: LoadingStatus;
   personalDetails: unknown;
+}
+
+/**
+ * `featured-results` — the host slice holding the featured-results bar payload
+ * that arrives alongside a search response. Fully typed (rather than stubbed)
+ * because `SearchData.featuredResultJson` already exposes
+ * {@link FeaturedResultsData} to consumers of this package.
+ */
+export interface FeaturedResultsState {
+  data: FeaturedResultsData | null;
 }
 
 /* ── Stubbed slices (opaque — flesh out when a service targets them) ────── */
@@ -209,6 +227,7 @@ export interface AppState {
   'database-search': DatabaseSearchState;
   Delivery: DeliveryState;
   favorites: FavoriteState;
+  'featured-results': FeaturedResultsState;
   filters: FilterState;
   frbr: FrbrState;
   'full-display': FullDisplayState;

@@ -28,8 +28,27 @@
  * - All "done*" account actions that feed downstream effects
  * - Analytics send* actions — trigger analytics HTTP side-effects
  * - triggerExportAllSendEmail — downstream effect fires HTTP email-send call
- * - patronDefaultSortUpdateAction — downstream effect in search.effects.ts saves sort preference via HTTP
+ * - patronDefaultSortUpdateAction — local mirror of a server-persisted preference.
+ *   Correction (2026.8.1): no effect listens to it; search.effects.ts *emits* it after
+ *   userSettingsService.saveSelectedPatronDefaultSort() succeeds. Dispatching it from a
+ *   remote writes userSettings.patronsDefaultSort in the store without persisting
+ *   server-side, desyncing the store from the ILS. Still excluded, for that reason.
  * - selectAllResourceTypeFilterAction — downstream effect in filter.effects.ts triggers a new search
+ * - setNewFilterStateAction — replaces the whole applied-filter set in one write; a remote
+ *   cannot construct a consistent filterState/multiSelectFilterState/previousSearchQuery triple
+ * - handleDeepLinkForFiltersAction / handleDeepLinkForResourceTypeFilterAction —
+ *   host-internal bootstrap that reconciles URL state with the filter slice
+ * - resourceStatusUpdateAction — writes the resource-type-bar load status; a remote
+ *   flipping it desyncs the bar from the in-flight host request
+ * - loadFeaturedResultsAction — server-authoritative payload (featured-results bar contents)
+ * - clearFeaturedResultsAction — reducer-only, but blanks host-owned data that only
+ *   repopulates on the next search; clearSearchAction already clears it as part of a reset
+ * - saveSearchHistorySuccessAction, displayFullRecordAnalyticsSuccess/Failure —
+ *   terminal markers for host-owned server writes; nothing for a remote to signal
+ * - loadJwtFailedAction, saveLoggedJwtAction, loadLoggedUserJwtAction — authentication flow
+ * - loadUserSettingsFailedAction, loadPreferLanguageSuccessAction,
+ *   restoreLanguageToInterfaceLanguage, removeSearchHistoryInSessionStorageSuccessAction —
+ *   terminal steps of host-owned settings/session chains
  * - resetUserSettingsSuccessAction — host effect restoreLanguageToInterfaceLanguage$
  *   navigates the user to /home and resets the interface language (exported until
  *   2026.5.3; removed as a safety correction in 2026.6.1)
@@ -44,6 +63,11 @@
  *
  * REMOVED IN 2026.6.1:
  * - resetUserSettingsSuccessAction — see safety note above.
+ *
+ * 2026.8.1: no actions added or removed. The August extract introduces no new
+ * remote-safe actions; the exported set is unchanged at 48. The exclusion list
+ * above was expanded to name every unexported action in the Search / filters /
+ * user / featured-results slices, so the gate is auditable rather than implicit.
  */
 
 import { createAction, props } from '@ngrx/store';

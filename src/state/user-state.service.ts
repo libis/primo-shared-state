@@ -2,6 +2,7 @@ import { Injectable, Signal } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { DecodedJwt, UserSettings, UserState } from '../models/user.model';
+import { LoadingStatus, LogoutReason } from '../models/state.const';
 import { AppState } from '../models/store.model';
 import { StateHelper } from '../utils/state-helper';
 import {
@@ -10,6 +11,7 @@ import {
   doneChangeUserSettingsLanguageAction,
   doneSaveHistoryToggleAction,
   doneUseHistoryToggleAction,
+  resetJwtAction,
   resetLogoutReason as resetLogoutReasonAction,
   setDecodedJwt as setDecodedJwtAction,
   setLoginFromStateAction,
@@ -83,6 +85,29 @@ export class UserStateService {
   }
 
   /**
+   * Why the last logout happened (`'user'` or `'timeout'`), or `undefined` when
+   * it has been cleared. Counterpart read for {@link resetLogoutReason}.
+   */
+  selectLogoutReason$(): Observable<LogoutReason | undefined> {
+    return this.helper.select$((state: AppState) => state.user?.logoutReason);
+  }
+
+  /** The route the user was on before login, used for post-login redirect. Counterpart read for {@link setLoginFromState}. */
+  selectLoginFromState$(): Observable<string | undefined> {
+    return this.helper.select$((state: AppState) => state.user?.loginFromState);
+  }
+
+  /** Load status of the user slice (JWT resolution). */
+  selectStatus$(): Observable<LoadingStatus> {
+    return this.helper.select$((state: AppState) => state.user?.status || 'pending');
+  }
+
+  /** Load status of the user-settings fetch. */
+  selectUserSettingsStatus$(): Observable<LoadingStatus> {
+    return this.helper.select$((state: AppState) => state.user?.userSettingsStatus || 'pending');
+  }
+
+  /**
    * Get JWT token once (snapshot)
    */
   async getJwt(): Promise<string | undefined> {
@@ -117,6 +142,22 @@ export class UserStateService {
 
   async getUserGroup(): Promise<string> {
     return this.helper.selectOnce((state: AppState) => state.user?.decodedJwt?.userGroup || 'GUEST');
+  }
+
+  async getLogoutReason(): Promise<LogoutReason | undefined> {
+    return this.helper.selectOnce((state: AppState) => state.user?.logoutReason);
+  }
+
+  async getLoginFromState(): Promise<string | undefined> {
+    return this.helper.selectOnce((state: AppState) => state.user?.loginFromState);
+  }
+
+  async getStatus(): Promise<LoadingStatus> {
+    return this.helper.selectOnce((state: AppState) => state.user?.status || 'pending');
+  }
+
+  async getUserSettingsStatus(): Promise<LoadingStatus> {
+    return this.helper.selectOnce((state: AppState) => state.user?.userSettingsStatus || 'pending');
   }
 
   /**
@@ -157,6 +198,22 @@ export class UserStateService {
     return this.helper.selectSignal((state: AppState) => state.user?.decodedJwt?.userGroup || 'GUEST', 'GUEST');
   }
 
+  logoutReasonSignal(): Signal<LogoutReason | undefined> {
+    return this.helper.selectSignal((state: AppState) => state.user?.logoutReason, undefined);
+  }
+
+  loginFromStateSignal(): Signal<string | undefined> {
+    return this.helper.selectSignal((state: AppState) => state.user?.loginFromState, undefined);
+  }
+
+  statusSignal(): Signal<LoadingStatus> {
+    return this.helper.selectSignal((state: AppState) => state.user?.status || 'pending', 'pending' as LoadingStatus);
+  }
+
+  userSettingsStatusSignal(): Signal<LoadingStatus> {
+    return this.helper.selectSignal((state: AppState) => state.user?.userSettingsStatus || 'pending', 'pending' as LoadingStatus);
+  }
+
   // ── Typed dispatch helpers ──────────────────────────────────────────────────
 
   setDecodedJwt(decodedJwt: DecodedJwt): void {
@@ -189,5 +246,14 @@ export class UserStateService {
 
   setAllowSavingRaSearchHistory(value: string): void {
     this.helper.dispatch(changeRaSaveSearchDoneAction({ value }));
+  }
+
+  /**
+   * Clears the JWT and logs the user out. `reason` distinguishes a deliberate
+   * sign-out (`'user'`) from a session expiry (`'timeout'`); `url` optionally
+   * records where to return after re-authentication.
+   */
+  logout(reason: LogoutReason, url?: string): void {
+    this.helper.dispatch(resetJwtAction({ logoutReason: reason, url }));
   }
 }

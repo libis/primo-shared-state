@@ -1,0 +1,182 @@
+name: Release
+
+# Fires when a version tag is pushed. Tags are bare `YYYY.M.N` — no `v` prefix —
+# matching the existing tags on this repo (2026.3.1, 2026.4.1, 2026.6.1) and the
+# version scheme in package.json:
+#
+#   YYYY  four-digit year
+#   M     month, no leading zero (8, not 08)
+#   N     regeneration count within that month, starting at 1
+#
+# The glob below is deliberately loose (globs cannot express the real rule); the
+# `validate` job applies the strict pattern and fails on anything malformed, so a
+# typo'd tag produces a visible red run rather than a silent no-op.
+on:
+  push:
+    tags:
+      - '[0-9][0-9][0-9][0-9].*'
+
+# Only `contents: write`, and only on the job that needs it — creating the release.
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag format
+        id: tag
+        run: |
+          version="${GITHUB_REF_NAME}"
+          if [[ ! "$version" =~ ^[0-9]{4}\.(1[0-2]|[1-9])\.[1-9][0-9]*$ ]]; then
+            echo "::error::Tag '$version' is not a valid release version."
+            echo "::error::Expected YYYY.M.N — four-digit year, month with no leading zero (1-12), build number from 1."
+            echo "::error::Example: 2026.8.1 (first build of August 2026)."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing version $version"
+
+      - name: Check package.json matches tag
+        run: |
+          version="${{ steps.tag.outputs.version }}"
+          pkg_version="$(node -p "require('./package.json').version")"
+          if [[ "$pkg_version" != "$version" ]]; then
+            echo "::error::Tag is '$version' but package.json says '$pkg_version'."
+            echo "::error::The published tarball embeds the package.json version, so these must agree."
+            echo "::error::Fix: bump package.json (and package-lock.json via 'npm install --package-lock-only'), commit, then re-tag."
+            exit 1
+          fi
+          echo "package.json version matches the tag."
+
+      - name: Check package-lock.json matches tag
+        run: |
+          version="${{ steps.tag.outputs.version }}"
+          lock_version="$(node -p "require('./package-lock.json').version")"
+          if [[ "$lock_version" != "$version" ]]; then
+            echo "::error::package-lock.json says '$lock_version' but the tag is '$version'."
+            echo "::error::'npm ci' refuses to run when the lockfile and package.json disagree."
+            echo "::error::Fix: run 'npm install --package-lock-only' and commit the result."
+            exit 1
+          fi
+          echo "package-lock.json version matches the tag."
+
+  build:
+    name: Build and pack
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      # `npm ci` (not `npm install`) so the build uses exactly the locked
+      # dependency tree and fails loudly if the lockfile drifted.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      # `npm run build` runs clean + tsc. tsc is the real gate here: every
+      # selector in this package is typed against AppState, so a feature-key or
+      # field-name drift from a regeneration surfaces as a compile error.
+      - name: Build
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          for f in dist/index.js dist/index.d.ts; do
+            if [[ ! -f "$f" ]]; then
+              echo "::error::Expected build artefact '$f' is missing."
+              exit 1
+            fi
+          done
+          echo "Build output present."
+
+      # `npm pack` honours the `files` allowlist in package.json (dist, README.md,
+      # LICENSE). It does not re-run the build: this repo has no `prepare` or
+      # `prepack` script, and `prepublishOnly` only fires on `npm publish`. So the
+      # tarball contains exactly what the step above produced and verified.
+      - name: Pack tarball
+        id: pack
+        run: |
+          tarball="$(npm pack --silent)"
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+          echo "Packed $tarball"
+
+      - name: Verify tarball contents
+        run: |
+          tarball="${{ steps.pack.outputs.tarball }}"
+          if tar tzf "$tarball" | grep -q '^package/src/'; then
+            echo "::error::Tarball leaks src/ — check the 'files' field in package.json and .npmignore."
+            exit 1
+          fi
+          if ! tar tzf "$tarball" | grep -q '^package/dist/index.d.ts$'; then
+            echo "::error::Tarball is missing dist/index.d.ts — consumers would get no types."
+            exit 1
+          fi
+          echo "Tarball contents look correct:"
+          tar tzf "$tarball" | head -20
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-tarball
+          path: ${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Create GitHub release
+    needs: [validate, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: package-tarball
+
+      # Pulls the '## <version>' section out of CHANGES.md for the release body.
+      # Missing notes are a warning, not a failure: the artefact is already built
+      # and verified, and a release body can be edited afterwards — unlike a
+      # tarball with the wrong version inside it.
+      - name: Extract release notes
+        id: notes
+        run: |
+          version="${{ needs.validate.outputs.version }}"
+          if awk -v v="$version" '
+                $1 == "##" && $2 == v { found = 1; print; next }
+                found && $1 == "##" { exit }
+                found { print }
+              ' CHANGES.md > release-notes.md && [[ -s release-notes.md ]]; then
+            echo "Found CHANGES.md entry for $version."
+          else
+            echo "::warning::No '## $version' section in CHANGES.md — using fallback release notes."
+            printf '## %s\n\nSee [CHANGES.md](CHANGES.md) for details.\n' "$version" > release-notes.md
+          fi
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${{ needs.validate.outputs.version }}"
+          gh release create "$version" \
+            --title "$version" \
+            --notes-file release-notes.md \
+            --verify-tag \
+            ./*.tgz

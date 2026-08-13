@@ -1,9 +1,19 @@
 import {LoadingStatus} from "./state.const";
 
+/**
+ * The search term and scope the currently-applied filters were built against.
+ * Named so it can be referenced from `FilterStateService` selectors; the host
+ * declares it inline on its `FilterState`.
+ */
+export interface PreviousSearchQuery {
+  searchTerm: string | undefined;
+  scope: string | undefined;
+}
+
 export interface FilterState{
   status: LoadingStatus,
   isRememberAll: boolean,
-  previousSearchQuery: {searchTerm: string | undefined, scope: string | undefined}
+  previousSearchQuery: PreviousSearchQuery
   includedFilter: selectedFilters[] | null,
   excludedFilter: selectedFilters[] | null,
   multiSelectedFilter: MultiSelectedFilter[] | null,

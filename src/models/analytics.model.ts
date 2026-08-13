@@ -65,7 +65,10 @@ export const EventsNames = {
   TOPIC_OVERVIEW: 'Topic Overview',
   LEGANTO_COURSE_INFO: 'Leganto Course Info',
   EXPORT_ALL: 'Export All',
-  MORE_FROM_THE_SAME: 'More From the Same'
+  MORE_FROM_THE_SAME: 'More From the Same',
+  BLOCKS_PAGE_ACTIONS: 'Blocks Page Actions',
+  FEATURED_RESULTS_BAR: 'Featured Results Bar',
+  RESULTS_PER_PAGE_CHANGED: 'Results Per Page Changed',
 } as const;
 
 export const PageNames: IgnoreMapSimpleString = {

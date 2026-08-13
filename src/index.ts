@@ -7,6 +7,7 @@ export * from './models/analytics.model';
 export * from './models/entity.model';
 export * from './models/view-config.model';
 export * from './models/account.model';
+export * from './models/featured-results.model';
 export * from './models/store.model';
 
 // Facade — the single entry point; preferred over the individual services below

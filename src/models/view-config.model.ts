@@ -8,6 +8,8 @@
  * This avoids duplicate exports.
  */
 
+import { Observable } from 'rxjs';
+
 import { SearchParamsWithStrParams } from './search.model';
 
 export interface ViewConfigData {
@@ -45,6 +47,8 @@ export interface ViewConfigData {
   limited_patrons_acq_in_alma_starter: boolean;
   searchWithinJournalConfig:         SearchWithinJournal;
   is_ip_allow_to_login?:             boolean;
+  /** Query URL backing the landing-page showcase carousel; absent when no showcase is configured. */
+  landingPageShowcaseQueryUrl?:      string;
 }
 
 export interface SearchWithinJournal {
@@ -121,6 +125,8 @@ export interface Customization {
   libraryLogo?: string;
   customizedColorTheme?: string;
   homepage?: HomepageCustomization;
+  /** When true the host renders the configured landing page instead of the default homepage. */
+  loadLandingPage?: boolean;
   assets: Assets;
 }
 
@@ -408,6 +414,7 @@ export interface SystemConfiguration {
   hide_rapido_section_for_hide_service_rs: boolean;
   rapido_SA_rapidill_mode: boolean;
   rapido_SA_enabled: boolean;
+  use_participating_items_for_non_rapido_requests: boolean;
   rapido_hide_get_it_user_groups: AdditionalLocationIcons;
   rapido_hide_blank_form_link_user_groups: AdditionalLocationIcons;
   default_user_search_history_off: boolean;
@@ -438,6 +445,7 @@ export interface SystemConfiguration {
   view_for_digital_viewer: string;
   enable_entity_autocomplete: boolean;
   default_hold_request_type: string;
+  include_library_hours_booking_request: boolean;
   booking_hour_format: string;
   booking_request_minutes_policy: string;
   syndetics_unbound_url: string;
@@ -458,8 +466,12 @@ export interface SystemConfiguration {
   enable_search_inside_journal: boolean;
   display_register_button_by_restricted_user_groups: boolean;
   primo_loan_list_sorting: string;
+  open_locations_filterBy_by_default: boolean;
   expand_results_toggles_visible: boolean;
   export_all_for_user_email_only: boolean;
+  /** First day of the week for booking/date pickers (0 = Sunday). */
+  calendar_week_start: number;
+  hide_update_login_credentials_external_users: boolean;
 }
 
 export interface HideRapidoExpandLinkMap {
@@ -539,6 +551,15 @@ export interface Mainview {
   label: string;
   target: string;
   authRequired: boolean;
+  /**
+   * Translated aria-label. Optional here because the host attaches it at
+   * runtime when it builds the main menu — it is absent from the raw config
+   * JSON, so code that reads `viewConfig.config.tiles` straight from a fixture
+   * will not have it.
+   */
+  ariaLabel$?: Observable<string>;
+  /** Translated tooltip. Attached at runtime by the host — see {@link Mainview.ariaLabel$}. */
+  toolTip$?: Observable<string>;
   isExternal: boolean;
 }
 

@@ -1,6 +1,7 @@
 import {LoadingStatus} from "./state.const";
 import {SafeHtml} from "@angular/platform-browser";
 import {FilterType} from "./filter.model";
+import {FeaturedResultsData} from "./featured-results.model";
 
 export type stringBoolean= "N" | "Y";
 
@@ -43,7 +44,6 @@ export interface SearchParams {
   browseParams?: string,
   isRelatedItems?: boolean,
   analyticAction?: string,
-  searchTerm?: string,
   conVoc?: boolean,
   authorityQuery?: string,        // Used for Authority search
   originatingSystem?: string,     // Used for Authority search
@@ -68,6 +68,8 @@ export interface SearchData {
   timelog:    Timelog;
   did_u_mean?:  string;
   expandedSearchAfterZeroResults?: boolean;
+  /** Featured-results payload; present only when the scope has a featured-results bar configured. */
+  featuredResultJson?: FeaturedResultsData;
 }
 
 export interface FullDisplayQueryParams {
@@ -112,6 +114,9 @@ export interface Doc {
 export enum Adaptor {
   LocalSearchEngine = "Local Search Engine",
   PrimoCentral = "Primo Central",
+  /** Host spelling (`search.model.ts` in the decompiled source). Prefer this member. */
+  PrimoVeDeepSearch = "Primo VE Deep Search",
+  /** @deprecated Casing alias kept for source compatibility — identical value to {@link Adaptor.PrimoVeDeepSearch}. */
   PrimoVEDeepSearch = "Primo VE Deep Search",
   EbscoLocal = "EbscoLocal",
   WorldCatLocal = 'WorldCatLocal',

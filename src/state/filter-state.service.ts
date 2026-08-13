@@ -1,7 +1,7 @@
 import { Injectable, Signal } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
-import { FilterState, selectedFilters, MultiSelectedFilter, ResourceTypeFilterModel } from '../models/filter.model';
+import { FilterState, selectedFilters, MultiSelectedFilter, PreviousSearchQuery, ResourceTypeFilterModel } from '../models/filter.model';
 import { LoadingStatus } from '../models/state.const';
 import { AppState } from '../models/store.model';
 import { StateHelper } from '../utils/state-helper';
@@ -19,6 +19,9 @@ import {
   quickFilterAction,
   addQuickFilterAction,
   removeQuickFilterAction,
+  removeIncludeFilterAction,
+  removeExcludeFilterAction,
+  applyIncludeFilterForHyperTextLikingAction,
   FilterGroupValue,
 } from '../actions/shared-actions';
 
@@ -93,6 +96,19 @@ export class FilterStateService {
     return this.helper.select$((state: AppState) => state.filters?.resourceTypeFilterStatus || 'pending');
   }
 
+  /** Load status of the filter slice as a whole. */
+  selectStatus$(): Observable<LoadingStatus> {
+    return this.helper.select$((state: AppState) => state.filters?.status || 'pending');
+  }
+
+  /**
+   * The search term and scope the currently-applied filters were built against.
+   * The host uses it to decide whether filters survive the next search.
+   */
+  selectPreviousSearchQuery$(): Observable<PreviousSearchQuery | undefined> {
+    return this.helper.select$((state: AppState) => state.filters?.previousSearchQuery);
+  }
+
   /**
    * Get included filters once (snapshot)
    */
@@ -132,6 +148,14 @@ export class FilterStateService {
 
   async getResourceTypeFilterStatus(): Promise<LoadingStatus> {
     return this.helper.selectOnce((state: AppState) => state.filters?.resourceTypeFilterStatus || 'pending');
+  }
+
+  async getStatus(): Promise<LoadingStatus> {
+    return this.helper.selectOnce((state: AppState) => state.filters?.status || 'pending');
+  }
+
+  async getPreviousSearchQuery(): Promise<PreviousSearchQuery | undefined> {
+    return this.helper.selectOnce((state: AppState) => state.filters?.previousSearchQuery);
   }
 
   /**
@@ -174,6 +198,14 @@ export class FilterStateService {
 
   resourceTypeFilterStatusSignal(): Signal<LoadingStatus> {
     return this.helper.selectSignal((state: AppState) => state.filters?.resourceTypeFilterStatus || 'pending', 'pending' as LoadingStatus);
+  }
+
+  statusSignal(): Signal<LoadingStatus> {
+    return this.helper.selectSignal((state: AppState) => state.filters?.status || 'pending', 'pending' as LoadingStatus);
+  }
+
+  previousSearchQuerySignal(): Signal<PreviousSearchQuery | undefined> {
+    return this.helper.selectSignal((state: AppState) => state.filters?.previousSearchQuery, undefined);
   }
 
   // ── Typed dispatch helpers ──────────────────────────────────────────────────
@@ -224,5 +256,24 @@ export class FilterStateService {
 
   setRememberAll(newValue: boolean): void {
     this.helper.dispatch(rememberAllChangeValueAction({ newValue }));
+  }
+
+  /** Removes a previously-applied include filter. The host effect runs the updated search. */
+  removeIncludeFilter(filterGroup: string, filterValue: string, mergedLabels: string[] = []): void {
+    this.helper.dispatch(removeIncludeFilterAction({ filterValue, filterGroup, mergedLabels }));
+  }
+
+  /** Removes a previously-applied exclude filter. The host effect runs the updated search. */
+  removeExcludeFilter(filterGroup: string, filterValue: string, mergedLabels: string[] = []): void {
+    this.helper.dispatch(removeExcludeFilterAction({ filterValue, filterGroup, mergedLabels }));
+  }
+
+  /**
+   * Applies an include filter originating from a hypertext-linking facet
+   * (e.g. clicking a subject heading in a record). Reducer-only — unlike
+   * {@link includeFilter} this does not trigger a search on its own.
+   */
+  includeFilterFromHyperTextLinking(filterGroup: string, filterValue: string): void {
+    this.helper.dispatch(applyIncludeFilterForHyperTextLikingAction({ filterGroup, filterValue }));
   }
 }

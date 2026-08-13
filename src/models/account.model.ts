@@ -222,6 +222,22 @@ export interface MappedFineItem {
   fineType: string;
   sumToDisplay: string;
   expandedDisplay: ExpandKeyValue[];
+  /** ILS institution the fine belongs to; set for cross-network fines. */
+  ilsinstitutioncode?: string;
+}
+
+/**
+ * A single patron block message, as stored in `AccountState.blocksList`.
+ *
+ * Pure display data — the host's account effects populate it from the ILS
+ * blocks response. Read it via `AccountStateService.selectBlocksList$()`;
+ * remotes never write it.
+ */
+export interface BlockMessage {
+  ilsinstitutioncode: string;
+  ilsinstitutionname: string;
+  text: string;
+  type: string;
 }
 
 export interface accountViewModel {
@@ -237,6 +253,7 @@ export interface accountViewModel {
   isLoansBadgeIndication: boolean | undefined;
   isRequestsBadgeIndication: boolean | undefined;
   isFinesBadgeIndication: boolean | undefined;
+  isBlocksBadgeIndication: boolean | undefined;
   finesCurrency: string | undefined;
   [key: string]: number | undefined | MenuOption[] | boolean | string;
 }

@@ -2,6 +2,7 @@ import { Injectable, Signal } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import {
+  BlockMessage,
   LoanItem,
   MappedRequestItem,
   MappedFineItem,
@@ -49,6 +50,15 @@ export class AccountStateService {
 
   selectBlocksCounter$(): Observable<number | undefined> {
     return this.helper.select$((state: AppState) => state.account?.blocksCounter);
+  }
+
+  /** Patron block messages loaded from the ILS. Empty until the host has fetched them. */
+  selectBlocksList$(): Observable<BlockMessage[]> {
+    return this.helper.select$((state: AppState) => state.account?.blocksList || []);
+  }
+
+  selectBlocksStatus$(): Observable<LoadingStatus> {
+    return this.helper.select$((state: AppState) => state.account?.blocksStatus || 'pending');
   }
 
   selectFavoritesCounter$(): Observable<number | undefined> {
@@ -121,6 +131,14 @@ export class AccountStateService {
     return this.helper.selectOnce((state: AppState) => state.account?.blocksCounter);
   }
 
+  async getBlocksList(): Promise<BlockMessage[]> {
+    return this.helper.selectOnce((state: AppState) => state.account?.blocksList || []);
+  }
+
+  async getBlocksStatus(): Promise<LoadingStatus> {
+    return this.helper.selectOnce((state: AppState) => state.account?.blocksStatus || 'pending');
+  }
+
   async getFavoritesCounter(): Promise<number | undefined> {
     return this.helper.selectOnce((state: AppState) => state.account?.favoritesCounter);
   }
@@ -173,6 +191,14 @@ export class AccountStateService {
 
   blocksCounterSignal(): Signal<number | undefined> {
     return this.helper.selectSignal((state: AppState) => state.account?.blocksCounter, undefined);
+  }
+
+  blocksListSignal(): Signal<BlockMessage[]> {
+    return this.helper.selectSignal((state: AppState) => state.account?.blocksList || [], [] as BlockMessage[]);
+  }
+
+  blocksStatusSignal(): Signal<LoadingStatus> {
+    return this.helper.selectSignal((state: AppState) => state.account?.blocksStatus || 'pending', 'pending' as LoadingStatus);
   }
 
   favoritesCounterSignal(): Signal<number | undefined> {

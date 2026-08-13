@@ -14,6 +14,13 @@ export interface DecodedJwt {
   restrictedUser: boolean
 }
 
+/**
+ * Server-persisted user preferences, mirrored into the `user` slice.
+ *
+ * Every field is optional because the host only populates the keys the ILS
+ * actually returned; the index signature keeps forward compatibility with
+ * settings this package does not yet name.
+ */
 export interface UserSettings {
   resultsBulkSize?: string;
   language?: string;
@@ -22,6 +29,18 @@ export interface UserSettings {
   autoExtendMySession?: string;
   allowSavingMyResearchAssistanceSearchHistory?: string;
   email?: string;
+  advanced_mode?: string;
+  beacon022?: string;
+  pr_discipline?: string;
+  pr_enabled?: string;
+  pr_recentness?: string;
+  smsnumber?: string;
+  /**
+   * The patron's saved default sort. Written server-side by the host when the
+   * `patrons_default_sort_nde` feature flag is on — read only; see the
+   * `patronDefaultSortUpdateAction` exclusion note in `shared-actions.ts`.
+   */
+  patronsDefaultSort?: string;
   [key: string]: string | undefined;
 }
 

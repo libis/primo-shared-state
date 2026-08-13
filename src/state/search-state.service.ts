@@ -1,7 +1,7 @@
 import { Injectable, Signal } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
-import { Doc, SearchParams, SearchMetaData } from '../models/search.model';
+import { Doc, Facet, SearchParams, SearchMetaData } from '../models/search.model';
 import { LoadingStatus } from '../models/state.const';
 import { AppState } from '../models/store.model';
 import { StateHelper } from '../utils/state-helper';
@@ -22,6 +22,9 @@ import {
   updateFullDisplayRecordYouCameFromAction,
   pcAvailabilityToggleChanged,
   searchInFullTextToggleChanged,
+  setPresentNotificationAction,
+  changePcAvailabilityToggleValue,
+  changeSearchInFullTextToggleValue,
 } from '../actions/shared-actions';
 
 /**
@@ -146,6 +149,25 @@ export class SearchStateService {
     return this.helper.select$((state: AppState) => state.Search?.isResourceRecommenderExpanded || false);
   }
 
+  /** Whether the current search is stored as a saved search. Counterpart read for {@link setIsSavedSearch}. */
+  selectIsSavedSearch$(): Observable<boolean> {
+    return this.helper.select$((state: AppState) => state.Search?.isSavedSearch || false);
+  }
+
+  /** Whether the search notification banner is currently shown. Counterpart read for {@link setPresentNotification}. */
+  selectPresentNotification$(): Observable<boolean> {
+    return this.helper.select$((state: AppState) => state.Search?.presentNotification || false);
+  }
+
+  /** Facets attached to the current search, with their own load status. */
+  selectFilterFacets$(): Observable<Facet[] | null> {
+    return this.helper.select$((state: AppState) => state.Search?.filter?.filters ?? null);
+  }
+
+  selectFilterStatus$(): Observable<LoadingStatus> {
+    return this.helper.select$((state: AppState) => state.Search?.filter?.status || 'pending');
+  }
+
   /**
    * Get all documents once (snapshot)
    */
@@ -233,6 +255,22 @@ export class SearchStateService {
 
   async isResourceRecommenderExpanded(): Promise<boolean> {
     return this.helper.selectOnce((state: AppState) => state.Search?.isResourceRecommenderExpanded || false);
+  }
+
+  async isSavedSearch(): Promise<boolean> {
+    return this.helper.selectOnce((state: AppState) => state.Search?.isSavedSearch || false);
+  }
+
+  async isPresentNotification(): Promise<boolean> {
+    return this.helper.selectOnce((state: AppState) => state.Search?.presentNotification || false);
+  }
+
+  async getFilterFacets(): Promise<Facet[] | null> {
+    return this.helper.selectOnce((state: AppState) => state.Search?.filter?.filters ?? null);
+  }
+
+  async getFilterStatus(): Promise<LoadingStatus> {
+    return this.helper.selectOnce((state: AppState) => state.Search?.filter?.status || 'pending');
   }
 
   /**
@@ -325,6 +363,22 @@ export class SearchStateService {
     return this.helper.selectSignal((state: AppState) => state.Search?.isResourceRecommenderExpanded || false, false);
   }
 
+  isSavedSearchSignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: AppState) => state.Search?.isSavedSearch || false, false);
+  }
+
+  presentNotificationSignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: AppState) => state.Search?.presentNotification || false, false);
+  }
+
+  filterFacetsSignal(): Signal<Facet[] | null> {
+    return this.helper.selectSignal((state: AppState) => state.Search?.filter?.filters ?? null, null);
+  }
+
+  filterStatusSignal(): Signal<LoadingStatus> {
+    return this.helper.selectSignal((state: AppState) => state.Search?.filter?.status || 'pending', 'pending' as LoadingStatus);
+  }
+
   // ── Typed dispatch helpers ──────────────────────────────────────────────────
 
   search(searchParams: SearchParams, searchType?: string): void {
@@ -389,5 +443,28 @@ export class SearchStateService {
 
   setIsResourceRecommenderExpanded(isResourceRecommenderExpanded: boolean): void {
     this.helper.dispatch(setIsResourceRecommenderExpandedAction({ isResourceRecommenderExpanded }));
+  }
+
+  /** Shows or hides the search notification banner. Pure UI write — no search is triggered. */
+  setPresentNotification(presentNotification: boolean): void {
+    this.helper.dispatch(setPresentNotificationAction({ presentNotification }));
+  }
+
+  /**
+   * Sets the Expand-My-Results toggle **without** running a new search.
+   * Use {@link toggleExpandMyResults} when the user flipped the toggle and a
+   * fresh search is expected.
+   */
+  setExpandMyResultsValue(pcAvailabilityToggleValue: boolean): void {
+    this.helper.dispatch(changePcAvailabilityToggleValue({ pcAvailabilityToggleValue }));
+  }
+
+  /**
+   * Sets the search-in-full-text toggle **without** running a new search.
+   * Use {@link toggleSearchInFullText} when the user flipped the toggle and a
+   * fresh search is expected.
+   */
+  setSearchInFullTextValue(searchInFullTextToggleValue: boolean): void {
+    this.helper.dispatch(changeSearchInFullTextToggleValue({ searchInFullTextToggleValue }));
   }
 }

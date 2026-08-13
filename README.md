@@ -10,7 +10,7 @@ Shared state models and Angular services for the Primo module-federation archite
 | Layer | Contents |
 |---|---|
 | **Facade** (`src/state/primo-state.service.ts`) | `PrimoStateService` — the single entry point. Inject it once and reach every domain: `primo.search`, `primo.filters`, `primo.user`, `primo.config`, `primo.entity`, `primo.account` |
-| **Models** (`src/models/`) | TypeScript interfaces mirroring the host's state shapes: `SearchParams`, `Doc`, `UserState`, `FilterState`, `ViewConfigData`, `SystemConfiguration`, `EntityViewModel`, `accountViewModel`, `LoanItem`, `EventsNames`, `LoadingStatus`, … |
+| **Models** (`src/models/`) | TypeScript interfaces mirroring the host's state shapes: `SearchParams`, `Doc`, `UserState`, `FilterState`, `ViewConfigData`, `SystemConfiguration`, `EntityViewModel`, `accountViewModel`, `LoanItem`, `BlockMessage`, `FeaturedResultsData`, `EventsNames`, `LoadingStatus`, … plus `AppState` (the root store shape) |
 | **Services** (`src/state/`) | Six `providedIn: 'root'` Angular services — `UserStateService`, `SearchStateService`, `FilterStateService` (read/write), `ViewConfigStateService`, `EntityStateService`, `AccountStateService` (read-only) — each offering Observable streams, one-shot Promise snapshots, Angular Signals, and typed dispatch helpers where appropriate. **Deprecated for direct injection since 2026.6.1** — reach them through `PrimoStateService` instead |
 | **Actions** (`src/actions/`) | `shared-actions.ts` — 48 NgRx action creators whose `type` strings match the host's reducers **byte-for-byte** |
 | **Utility** (`src/utils/`) | `StateHelper` — thin wrapper around `Store` used internally by all services |
@@ -90,7 +90,7 @@ npm run build
 
 # 3. Create a distributable tarball
 npm pack
-# → libis-primo-shared-state-2026.6.1.tgz
+# → libis-primo-shared-state-2026.8.1.tgz
 ```
 
 ---
@@ -101,14 +101,14 @@ npm pack
 
 ```bash
 npm pack
-cp libis-primo-shared-state-2026.6.1.tgz path/to/NDE_customModule/nde/
+cp libis-primo-shared-state-2026.8.1.tgz path/to/NDE_customModule/nde/
 ```
 
 ### Step 2 — add the `file:` dependency to the remote's `package.json`
 
 ```json
 "dependencies": {
-  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.6.1.tgz"
+  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.8.1.tgz"
 }
 ```
 
@@ -216,7 +216,7 @@ import { Store } from '@ngrx/store';
 store.select((state: AppState) => state.Search.searchResultsMetaData?.info?.total);
 ```
 
-Six slices are fully typed (`Search`, `user`, `filters`, `account`, `viewConfig`, `linked-data-entity`); the other 24 are declared as opaque `Record<string, unknown>` — they type-check at the slice-access level but you'll need to narrow field reads yourself. Feature-key casing in `AppState` mirrors each reducer's `StoreModule.forFeature(...)` registration verbatim (mixed PascalCase `Search`, camelCase `viewConfig`, kebab-case `linked-data-entity`, lowercase `user`) — selectors must match the exact runtime key.
+Seven slices are fully typed — the six the services read (`Search`, `user`, `filters`, `account`, `viewConfig`, `linked-data-entity`) plus `featured-results`, typed since 2026.8.1 because its payload is already public via `SearchData.featuredResultJson`. The other 24 are declared as opaque `Record<string, unknown>` — they type-check at the slice-access level but you'll need to narrow field reads yourself. Feature-key casing in `AppState` mirrors each reducer's `StoreModule.forFeature(...)` registration verbatim (mixed PascalCase `Search`, camelCase `viewConfig`, kebab-case `linked-data-entity`, lowercase `user`) — selectors must match the exact runtime key.
 
 ### The facade: PrimoStateService
 
@@ -811,6 +811,10 @@ instance, so the per-service references below apply verbatim:
 | `selectUserSettings$()` | `Observable<UserSettings \| undefined>` | User preferences |
 | `selectUserName$()` | `Observable<string \| undefined>` | Username from JWT |
 | `selectUserGroup$()` | `Observable<string>` | User group (default `'GUEST'`) |
+| `selectLogoutReason$()` *(new in 2026.8.1)* | `Observable<LogoutReason \| undefined>` | Why the last logout happened — read counterpart to `resetLogoutReason()` |
+| `selectLoginFromState$()` *(new in 2026.8.1)* | `Observable<string \| undefined>` | Pre-login route — read counterpart to `setLoginFromState()` |
+| `selectStatus$()` *(new in 2026.8.1)* | `Observable<LoadingStatus>` | JWT resolution status |
+| `selectUserSettingsStatus$()` *(new in 2026.8.1)* | `Observable<LoadingStatus>` | User-settings fetch status |
 
 #### Signals
 | Method | Returns | Initial value |
@@ -822,6 +826,10 @@ instance, so the per-service references below apply verbatim:
 | `userSettingsSignal()` | `Signal<UserSettings \| undefined>` | `undefined` |
 | `userNameSignal()` | `Signal<string \| undefined>` | `undefined` |
 | `userGroupSignal()` | `Signal<string>` | `'GUEST'` |
+| `logoutReasonSignal()` *(new in 2026.8.1)* | `Signal<LogoutReason \| undefined>` | `undefined` |
+| `loginFromStateSignal()` *(new in 2026.8.1)* | `Signal<string \| undefined>` | `undefined` |
+| `statusSignal()` *(new in 2026.8.1)* | `Signal<LoadingStatus>` | `'pending'` |
+| `userSettingsStatusSignal()` *(new in 2026.8.1)* | `Signal<LoadingStatus>` | `'pending'` |
 
 #### Snapshots
 | Method | Returns |
@@ -833,9 +841,15 @@ instance, so the per-service references below apply verbatim:
 | `getUserSettings()` | `Promise<UserSettings \| undefined>` |
 | `getUserName()` | `Promise<string \| undefined>` |
 | `getUserGroup()` | `Promise<string>` |
+| `getLogoutReason()` *(new in 2026.8.1)* | `Promise<LogoutReason \| undefined>` |
+| `getLoginFromState()` *(new in 2026.8.1)* | `Promise<string \| undefined>` |
+| `getStatus()` *(new in 2026.8.1)* | `Promise<LoadingStatus>` |
+| `getUserSettingsStatus()` *(new in 2026.8.1)* | `Promise<LoadingStatus>` |
 
 #### Dispatch helpers
-`setDecodedJwt(jwt)` · `setLoginFromState(v)` · `resetLogoutReason()` · `setLanguage(v)` · `setSaveHistory(v)` · `setUseHistory(v)` · `setAutoExtendMySession(v)` · `setAllowSavingRaSearchHistory(v)` · `dispatch(action)`
+`setDecodedJwt(jwt)` · `setLoginFromState(v)` · `resetLogoutReason()` · `setLanguage(v)` · `setSaveHistory(v)` · `setUseHistory(v)` · `setAutoExtendMySession(v)` · `setAllowSavingRaSearchHistory(v)` · `logout(reason, url?)` *(new in 2026.8.1)* · `dispatch(action)`
+
+> `logout(reason, url?)` wraps `resetJwtAction` — `reason` is `'user'` for a deliberate sign-out or `'timeout'` for a session expiry.
 
 ---
 
@@ -863,6 +877,10 @@ instance, so the per-service references below apply verbatim:
 | `selectLastSearchTerms$()` | `Observable<string[]>` | Last search terms (autocomplete history) |
 | `selectFullDisplayRecordYouCameFrom$()` | `Observable<string>` | Record ID the user navigated from |
 | `selectIsResourceRecommenderExpanded$()` | `Observable<boolean>` | Resource Recommender panel expansion |
+| `selectIsSavedSearch$()` *(new in 2026.8.1)* | `Observable<boolean>` | Whether the current search is saved — read counterpart to `setIsSavedSearch()` |
+| `selectPresentNotification$()` *(new in 2026.8.1)* | `Observable<boolean>` | Notification banner visibility — read counterpart to `setPresentNotification()` |
+| `selectFilterFacets$()` *(new in 2026.8.1)* | `Observable<Facet[] \| null>` | Facets attached to the current search (`Search.filter.filters`) |
+| `selectFilterStatus$()` *(new in 2026.8.1)* | `Observable<LoadingStatus>` | Load status of those facets (`Search.filter.status`) |
 
 #### Signals
 | Method | Returns | Initial value |
@@ -886,6 +904,10 @@ instance, so the per-service references below apply verbatim:
 | `lastSearchTermsSignal()` | `Signal<string[]>` | `[]` |
 | `fullDisplayRecordYouCameFromSignal()` | `Signal<string>` | `''` |
 | `isResourceRecommenderExpandedSignal()` | `Signal<boolean>` | `false` |
+| `isSavedSearchSignal()` *(new in 2026.8.1)* | `Signal<boolean>` | `false` |
+| `presentNotificationSignal()` *(new in 2026.8.1)* | `Signal<boolean>` | `false` |
+| `filterFacetsSignal()` *(new in 2026.8.1)* | `Signal<Facet[] \| null>` | `null` |
+| `filterStatusSignal()` *(new in 2026.8.1)* | `Signal<LoadingStatus>` | `'pending'` |
 
 #### Snapshots
 | Method | Returns |
@@ -909,9 +931,19 @@ instance, so the per-service references below apply verbatim:
 | `getLastSearchTerms()` | `Promise<string[]>` |
 | `getFullDisplayRecordYouCameFrom()` | `Promise<string>` |
 | `isResourceRecommenderExpanded()` | `Promise<boolean>` |
+| `isSavedSearch()` *(new in 2026.8.1)* | `Promise<boolean>` |
+| `isPresentNotification()` *(new in 2026.8.1)* | `Promise<boolean>` |
+| `getFilterFacets()` *(new in 2026.8.1)* | `Promise<Facet[] \| null>` |
+| `getFilterStatus()` *(new in 2026.8.1)* | `Promise<LoadingStatus>` |
 
 #### Dispatch helpers
-`search(params, type?)` · `clearSearch()` · `setPageLimit(n)` · `setPageNumber(n)` · `setSortBy(s)` · `setIsSavedSearch(b)` · `setSearchNotificationMessage(s)` · `saveCurrentSearchTerm(s)` · `addLastSearchTerm(s)` · `setFullDisplayRecordYouCameFrom(s)` · `setDisplaySummary(b)` · `setIsSnackBarOpen(b)` · `setIsReportAProblemOpen(b)` · `setIsResourceRecommenderExpanded(b)` · `toggleExpandMyResults(b)` · `toggleSearchInFullText(b)` · `dispatch(action)`
+`search(params, type?)` · `clearSearch()` · `setPageLimit(n)` · `setPageNumber(n)` · `setSortBy(s)` · `setIsSavedSearch(b)` · `setSearchNotificationMessage(s)` · `setPresentNotification(b)` *(new in 2026.8.1)* · `saveCurrentSearchTerm(s)` · `addLastSearchTerm(s)` · `setFullDisplayRecordYouCameFrom(s)` · `setDisplaySummary(b)` · `setIsSnackBarOpen(b)` · `setIsReportAProblemOpen(b)` · `setIsResourceRecommenderExpanded(b)` · `toggleExpandMyResults(b)` · `toggleSearchInFullText(b)` · `setExpandMyResultsValue(b)` *(new in 2026.8.1)* · `setSearchInFullTextValue(b)` *(new in 2026.8.1)* · `dispatch(action)`
+
+> **`toggle…` vs `set…Value`.** `toggleExpandMyResults(b)` / `toggleSearchInFullText(b)`
+> dispatch the *pressed* actions — the host effect runs a fresh search. The new
+> `setExpandMyResultsValue(b)` / `setSearchInFullTextValue(b)` dispatch the
+> *value changed* actions instead, which write the toggle state only. Use the
+> latter when syncing a toggle's appearance without re-querying.
 
 ---
 
@@ -928,6 +960,8 @@ instance, so the per-service references below apply verbatim:
 | `selectIsFiltersOpen$()` | `Observable<boolean>` | Filter panel open state |
 | `selectIsRememberAll$()` | `Observable<boolean>` | Remember-all toggle |
 | `selectResourceTypeFilterStatus$()` | `Observable<LoadingStatus>` | Resource type filter load status |
+| `selectStatus$()` *(new in 2026.8.1)* | `Observable<LoadingStatus>` | Filter slice load status |
+| `selectPreviousSearchQuery$()` *(new in 2026.8.1)* | `Observable<PreviousSearchQuery \| undefined>` | Term + scope the applied filters were built against |
 
 #### Signals
 | Method | Returns | Initial value |
@@ -940,6 +974,8 @@ instance, so the per-service references below apply verbatim:
 | `isFiltersOpenSignal()` | `Signal<boolean>` | `false` |
 | `isRememberAllSignal()` | `Signal<boolean>` | `false` |
 | `resourceTypeFilterStatusSignal()` | `Signal<LoadingStatus>` | `'pending'` |
+| `statusSignal()` *(new in 2026.8.1)* | `Signal<LoadingStatus>` | `'pending'` |
+| `previousSearchQuerySignal()` *(new in 2026.8.1)* | `Signal<PreviousSearchQuery \| undefined>` | `undefined` |
 
 #### Snapshots
 | Method | Returns |
@@ -952,9 +988,16 @@ instance, so the per-service references below apply verbatim:
 | `isFiltersOpen()` | `Promise<boolean>` |
 | `isRememberAll()` | `Promise<boolean>` |
 | `getResourceTypeFilterStatus()` | `Promise<LoadingStatus>` |
+| `getStatus()` *(new in 2026.8.1)* | `Promise<LoadingStatus>` |
+| `getPreviousSearchQuery()` *(new in 2026.8.1)* | `Promise<PreviousSearchQuery \| undefined>` |
 
 #### Dispatch helpers
-`loadFilters(params, facetsCacheKey?)` · `updateSortByParam(s)` · `includeFilter(group, value, labels?)` · `excludeFilter(group, value, labels?)` · `applyMultiSelectFilters(filters)` · `clearAllFilters(params?, isSideBarFilters?, isQuickFilters?)` · `toggleQuickFilter(code)` · `addQuickFilter(code)` · `removeQuickFilter(code)` · `selectResourceType(model, index?)` · `setFiltersOpen(b)` · `setRememberAll(b)` · `dispatch(action)`
+`loadFilters(params, facetsCacheKey?)` · `updateSortByParam(s)` · `includeFilter(group, value, labels?)` · `excludeFilter(group, value, labels?)` · `removeIncludeFilter(group, value, labels?)` *(new in 2026.8.1)* · `removeExcludeFilter(group, value, labels?)` *(new in 2026.8.1)* · `includeFilterFromHyperTextLinking(group, value)` *(new in 2026.8.1)* · `applyMultiSelectFilters(filters)` · `clearAllFilters(params?, isSideBarFilters?, isQuickFilters?)` · `toggleQuickFilter(code)` · `addQuickFilter(code)` · `removeQuickFilter(code)` · `selectResourceType(model, index?)` · `setFiltersOpen(b)` · `setRememberAll(b)` · `dispatch(action)`
+
+> The three new helpers wrap actions that were already exported but had no typed
+> wrapper: `removeIncludeFilterAction`, `removeExcludeFilterAction`, and
+> `applyIncludeFilterForHyperTextLikingAction`. The first two trigger a host
+> search; the third is reducer-only.
 
 ---
 
@@ -1076,6 +1119,8 @@ instance, so the per-service references below apply verbatim:
 | `selectRequestsCounter$()` | `Observable<number \| undefined>` | Active requests count |
 | `selectFinesCounter$()` | `Observable<number \| undefined>` | Active fines count |
 | `selectBlocksCounter$()` | `Observable<number \| undefined>` | Active blocks count |
+| `selectBlocksList$()` *(new in 2026.8.1)* | `Observable<BlockMessage[]>` | Patron block messages (empty until fetched) |
+| `selectBlocksStatus$()` *(new in 2026.8.1)* | `Observable<LoadingStatus>` | Blocks load status |
 | `selectFavoritesCounter$()` | `Observable<number \| undefined>` | Favourites count |
 | `selectLoansList$()` | `Observable<LoanItem[] \| undefined>` | Loan items |
 | `selectRequestsList$()` | `Observable<MappedRequestItem[] \| undefined>` | Request items |
@@ -1095,6 +1140,8 @@ instance, so the per-service references below apply verbatim:
 | `requestsCounterSignal()` | `Signal<number \| undefined>` | `undefined` |
 | `finesCounterSignal()` | `Signal<number \| undefined>` | `undefined` |
 | `blocksCounterSignal()` | `Signal<number \| undefined>` | `undefined` |
+| `blocksListSignal()` *(new in 2026.8.1)* | `Signal<BlockMessage[]>` | `[]` |
+| `blocksStatusSignal()` *(new in 2026.8.1)* | `Signal<LoadingStatus>` | `'pending'` |
 | `favoritesCounterSignal()` | `Signal<number \| undefined>` | `undefined` |
 | `loansListSignal()` | `Signal<LoanItem[] \| undefined>` | `undefined` |
 | `requestsListSignal()` | `Signal<MappedRequestItem[] \| undefined>` | `undefined` |
@@ -1114,6 +1161,8 @@ instance, so the per-service references below apply verbatim:
 | `getRequestsCounter()` | `Promise<number \| undefined>` |
 | `getFinesCounter()` | `Promise<number \| undefined>` |
 | `getBlocksCounter()` | `Promise<number \| undefined>` |
+| `getBlocksList()` *(new in 2026.8.1)* | `Promise<BlockMessage[]>` |
+| `getBlocksStatus()` *(new in 2026.8.1)* | `Promise<LoadingStatus>` |
 | `getFavoritesCounter()` | `Promise<number \| undefined>` |
 | `getLoansList()` | `Promise<LoanItem[] \| undefined>` |
 | `getRequestsList()` | `Promise<MappedRequestItem[] \| undefined>` |
@@ -1205,7 +1254,22 @@ Key/value map of persisted user preferences. All fields are optional strings.
 | `autoExtendMySession` | `string?` | `'true'`/`'false'` — auto session extension |
 | `allowSavingMyResearchAssistanceSearchHistory` | `string?` | Research assistant history opt-in |
 | `email` | `string?` | User's email address |
+| `advanced_mode` | `string?` | Advanced-search mode preference *(named in 2026.8.1)* |
+| `beacon022` | `string?` | Beacon identifier *(named in 2026.8.1)* |
+| `pr_discipline` | `string?` | Personalised-ranking discipline *(named in 2026.8.1)* |
+| `pr_enabled` | `string?` | Personalised ranking on/off *(named in 2026.8.1)* |
+| `pr_recentness` | `string?` | Personalised-ranking recency weight *(named in 2026.8.1)* |
+| `smsnumber` | `string?` | SMS notification number *(named in 2026.8.1)* |
+| `patronsDefaultSort` | `string?` | Saved default sort — read-only mirror, see note below *(named in 2026.8.1)* |
 | `[key: string]` | `string \| undefined` | Index signature for additional settings |
+
+> The seven fields marked *named in 2026.8.1* were always reachable through the
+> index signature; 2026.8.1 gives them explicit optional declarations so they
+> autocomplete and type-check. Nothing was removed.
+>
+> `patronsDefaultSort` is written server-side by the host when the
+> `patrons_default_sort_nde` feature flag is on. Treat it as read-only — see the
+> `patronDefaultSortUpdateAction` exclusion note in the safety section.
 
 ---
 
@@ -1257,11 +1321,16 @@ Parameters sent to the host search engine. `q` and `scope` are required; all oth
 | `browseParams` | `string?` | Additional browse parameters |
 | `isRelatedItems` | `boolean?` | Related items search flag |
 | `analyticAction` | `string?` | Analytics event identifier |
-| `searchTerm` | `string?` | Saved search term for history *(new in 2026.3.1)* |
 | `conVoc` | `boolean?` | Controlled-vocabulary search flag *(new in 2026.4.1)* |
 | `authorityQuery` | `string?` | Authority query string *(new in 2026.4.1)* |
 | `originatingSystem` | `string?` | Originating system identifier *(new in 2026.4.1)* |
 | `originatingSystemId` | `string?` | Originating system record ID *(new in 2026.4.1)* |
+
+> **Removed in 2026.8.1: `searchTerm?: string`.** This field was added package-side
+> in 2026.3.1 but has never existed on the host's `SearchParams` — the host ignored
+> it, so setting it had no effect on the search that ran. Use the `q` field for the
+> query, and `SearchStateService.saveCurrentSearchTerm()` (which dispatches
+> `saveCurrentSearchTermAction`) to record a term in search history.
 
 #### `SearchParamsWithStrParams`
 
@@ -1291,6 +1360,7 @@ type SearchParamsWithStrParams = Omit<SearchParams, 'qInclude' | 'qExclude' | 'm
 | `timelog` | `Timelog` | Server-side performance timings |
 | `did_u_mean` | `string?` | Spelling suggestion |
 | `expandedSearchAfterZeroResults` | `boolean?` | Search was expanded due to zero results |
+| `featuredResultJson` | `FeaturedResultsData?` | Featured-results bar payload; present only when the scope has one configured *(new in 2026.8.1)* |
 
 #### `Info`
 
@@ -1375,7 +1445,8 @@ A single search result entity. This is the main object you work with when readin
 |---|---|
 | `LocalSearchEngine` | Local Search Engine |
 | `PrimoCentral` | Primo Central |
-| `PrimoVEDeepSearch` | Primo VE Deep Search |
+| `PrimoVeDeepSearch` | Primo VE Deep Search *(host spelling — prefer this; added in 2026.8.1)* |
+| `PrimoVEDeepSearch` | Primo VE Deep Search *(deprecated casing alias, identical value — kept so existing code compiles)* |
 | `EbscoLocal` | EBSCO local connector |
 | `WorldCatLocal` | WorldCat local connector |
 | `SummonLocal` | Summon local connector |
@@ -1880,6 +1951,59 @@ type MoreFromTheSameType = typeof MORE_FROM_THE_SAME_TYPE[keyof typeof MORE_FROM
 
 ---
 
+#### Featured-results types
+
+*New in 2026.8.1 — defined in `src/models/featured-results.model.ts`. These back the host's `featured-results` slice and the `SearchData.featuredResultJson` field. Read-only: the host owns every write, and neither featured-results action is exported (see the safety section).*
+
+##### `FeaturedResultItem`
+
+| Field | Type |
+|---|---|
+| `generalData` | `string` |
+| `isExpanded` | `boolean` |
+| `recordId` | `string` |
+| `thumbnailLinks` | `string[]` |
+| `title` | `string` |
+| `type` | `string` |
+| `context` | `string` |
+
+##### `FeaturedResultsData`
+
+| Field | Type | Notes |
+|---|---|---|
+| `featuedResultsItems` | `FeaturedResultItem[]` | Spelling is verbatim from the backend JSON — the typo is in the host model too |
+| `format` | `string` | |
+| `moreTab` | `string` | |
+| `resourceType` | `string` | |
+| `searchScopeSet` | `string` | |
+| `barTitle` | `string` | |
+| `totalHits` | `number` | |
+
+##### `FEATURED_RESULTS_MIN_ITEMS`
+
+```typescript
+const FEATURED_RESULTS_MIN_ITEMS = 3;
+```
+
+Minimum item count before the host renders the featured-results bar.
+
+Reading the payload off the current search:
+
+```typescript
+import { inject } from '@angular/core';
+import { PrimoStateService, FEATURED_RESULTS_MIN_ITEMS } from '@libis/primo-shared-state';
+
+const primo = inject(PrimoStateService);
+const meta = primo.search.searchMetaDataSignal();
+
+const featured = computed(() => {
+  const data = meta()?.featuredResultJson;
+  return data && data.featuedResultsItems.length >= FEATURED_RESULTS_MIN_ITEMS ? data : null;
+});
+```
+
+---
+
 #### Enrichment & citation types
 
 ##### `Enrichment`
@@ -1994,13 +2118,22 @@ Defined in `src/models/filter.model.ts`.
 |---|---|---|
 | `status` | `LoadingStatus` | Current load status of the filter slice |
 | `isRememberAll` | `boolean` | Whether "Remember All" is toggled on |
-| `previousSearchQuery` | `{ searchTerm: string \| undefined; scope: string \| undefined }` | Last search term and scope before filter change |
+| `previousSearchQuery` | `PreviousSearchQuery` | Last search term and scope before filter change *(the inline shape was given the name `PreviousSearchQuery` in 2026.8.1 — same fields)* |
 | `includedFilter` | `selectedFilters[] \| null` | Active include facet filters |
 | `excludedFilter` | `selectedFilters[] \| null` | Active exclude facet filters |
 | `multiSelectedFilter` | `MultiSelectedFilter[] \| null` | Multi-select facet filters |
 | `resourceTypeFilter` | `ResourceTypeFilterModel \| null` | Active resource-type filter |
 | `resourceTypeFilterStatus` | `LoadingStatus` | Load status of the resource-type filter bar |
 | `isFiltersOpen` | `boolean` | Whether the filter panel is open |
+
+#### `PreviousSearchQuery`
+
+*New in 2026.8.1 — a name for the shape `FilterState.previousSearchQuery` already had, so selectors can return it by type.*
+
+| Field | Type |
+|---|---|
+| `searchTerm` | `string \| undefined` |
+| `scope` | `string \| undefined` |
 
 #### `selectedFilters`
 
@@ -2068,6 +2201,7 @@ Top-level config object. Key properties:
 | `patron_default_sort` | `boolean` *(new in 2026.4.1)* |
 | `searchWithinJournalConfig` | `SearchWithinJournal` *(new in 2026.4.1)* |
 | `is_ip_allow_to_login` | `boolean?` *(new in 2026.6.1)* |
+| `landingPageShowcaseQueryUrl` | `string?` *(new in 2026.8.1 — query URL backing the landing-page showcase carousel)* |
 
 #### `SearchWithinJournal`
 
@@ -2115,6 +2249,16 @@ Fields added in 2026.6.1:
 |---|---|
 | `rapido_hide_blank_ill_from_link_menu` | `boolean` |
 
+Fields added in 2026.8.1:
+
+| Field | Type | Notes |
+|---|---|---|
+| `use_participating_items_for_non_rapido_requests` | `boolean` | |
+| `include_library_hours_booking_request` | `boolean` | |
+| `open_locations_filterBy_by_default` | `boolean` | |
+| `calendar_week_start` | `number` | First day of week for booking/date pickers (`0` = Sunday) |
+| `hide_update_login_credentials_external_users` | `boolean` | |
+
 #### `MappingTables`
 
 ~50+ mapping tables used by the host for display transformations (resource types, icons, labels, etc.). Added in 2026.5.1: `'Resource Sharing Additional Information': MappingTable[]`. Added in 2026.6.1: `'Authority Search Operators': MappingTable[]`.
@@ -2147,6 +2291,19 @@ Fields added in 2026.6.1:
 | `searchQuery` | `string` |
 | `searchScope` | `string` |
 | `date` | `string` |
+
+#### Other view-config fields added in 2026.8.1
+
+| Interface | Field | Type | Notes |
+|---|---|---|---|
+| `Customization` | `loadLandingPage` | `boolean?` | Render the configured landing page instead of the default homepage |
+| `Mainview` | `ariaLabel$` | `Observable<string>?` | Translated aria-label |
+| `Mainview` | `toolTip$` | `Observable<string>?` | Translated tooltip |
+
+> Both `Mainview` fields are optional here even though the host declares them
+> required: the host attaches them at runtime when it builds the main menu, so
+> they are absent from the raw config JSON. Code reading `config.tiles` from a
+> fixture will not have them.
 
 ---
 
@@ -2287,6 +2444,7 @@ Defined in `src/models/account.model.ts` (partial — see excluded types below).
 | `isLoansBadgeIndication` | `boolean \| undefined` |
 | `isRequestsBadgeIndication` | `boolean \| undefined` |
 | `isFinesBadgeIndication` | `boolean \| undefined` |
+| `isBlocksBadgeIndication` | `boolean \| undefined` *(new in 2026.8.1)* |
 | `finesCurrency` | `string \| undefined` |
 
 #### `LoanItem`
@@ -2299,7 +2457,18 @@ View-model for requests with display lines (`firstLine`, `secondLine`, `thirdLin
 
 #### `MappedFineItem`
 
-View-model for fines with `fineId`, `fineDate`, `title`, `sumToDisplay`, `fineType`, and display lines.
+View-model for fines with `fineId`, `fineDate`, `title`, `sumToDisplay`, `fineType`, and display lines. Gained `ilsinstitutioncode?: string` in 2026.8.1 (set for cross-network fines).
+
+#### `BlockMessage`
+
+*New in 2026.8.1 — one patron block message, as stored in `AccountState.blocksList`. Read via `AccountStateService.selectBlocksList$()`; the host owns every write.*
+
+| Field | Type |
+|---|---|
+| `ilsinstitutioncode` | `string` |
+| `ilsinstitutionname` | `string` |
+| `text` | `string` |
+| `type` | `string` |
 
 #### `FavoriteItem`
 
@@ -2340,7 +2509,7 @@ Defined in `src/models/analytics.model.ts`. Const maps for consistent analytics 
 
 #### `EventsNames`
 
-Const object mapping ~54 event names (added in 2026.5.1: `TOPIC_OVERVIEW`, `LEGANTO_COURSE_INFO`, `EXPORT_ALL`; added in 2026.6.1: `MORE_FROM_THE_SAME`), e.g.:
+Const object mapping ~57 event names (added in 2026.5.1: `TOPIC_OVERVIEW`, `LEGANTO_COURSE_INFO`, `EXPORT_ALL`; added in 2026.6.1: `MORE_FROM_THE_SAME`; added in 2026.8.1: `BLOCKS_PAGE_ACTIONS`, `FEATURED_RESULTS_BAR`, `RESULTS_PER_PAGE_CHANGED`), e.g.:
 
 ```typescript
 import { EventsNames } from '@libis/primo-shared-state';
@@ -2471,8 +2640,38 @@ This package uses `YYYY.M.regenerateCount` versioning (e.g. `2026.4.1`):
 # After regenerating, build and pack:
 npm run build
 npm pack
-# → libis-primo-shared-state-2026.6.1.tgz
+# → libis-primo-shared-state-2026.8.1.tgz
 ```
+
+### Cutting a release
+
+Pushing a version tag runs [`.github/workflows/release.yml`](.github/workflows/release.yml),
+which builds the package, packs the tarball, and publishes it as a GitHub Release
+with that version's `CHANGES.md` section as the release notes.
+
+Tags are bare — no `v` prefix — and must match `YYYY.M.N` exactly:
+
+```bash
+git tag 2026.8.1
+git push origin 2026.8.1
+```
+
+Before tagging, make sure all three agree on the version, or the workflow fails
+with an explicit message rather than shipping a mislabelled tarball:
+
+| Where | How to update |
+|---|---|
+| `package.json` | edit `version` |
+| `package-lock.json` | `npm install --package-lock-only` |
+| `CHANGES.md` | add the `## <version>` section |
+
+The lockfile matters: `npm ci` refuses to run when it disagrees with
+`package.json`, so a forgotten `--package-lock-only` breaks the build.
+
+Consumers then download the `.tgz` from the release page and follow
+[Deploying to a module-federation remote client](#deploying-to-a-module-federation-remote-client).
+The workflow does **not** publish to any npm registry — this package has never
+had one configured, and the documented deployment path is the tarball.
 
 ## Regenerating this package
 
