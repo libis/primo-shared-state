@@ -90,7 +90,7 @@ npm run build
 
 # 3. Create a distributable tarball
 npm pack
-# → libis-primo-shared-state-2026.8.1.tgz
+# → libis-primo-shared-state-2026.9.1.tgz
 ```
 
 ---
@@ -101,14 +101,14 @@ npm pack
 
 ```bash
 npm pack
-cp libis-primo-shared-state-2026.8.1.tgz path/to/NDE_customModule/nde/
+cp libis-primo-shared-state-2026.9.1.tgz path/to/NDE_customModule/nde/
 ```
 
 ### Step 2 — add the `file:` dependency to the remote's `package.json`
 
 ```json
 "dependencies": {
-  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.8.1.tgz"
+  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.9.1.tgz"
 }
 ```
 
@@ -881,6 +881,7 @@ instance, so the per-service references below apply verbatim:
 | `selectPresentNotification$()` *(new in 2026.8.1)* | `Observable<boolean>` | Notification banner visibility — read counterpart to `setPresentNotification()` |
 | `selectFilterFacets$()` *(new in 2026.8.1)* | `Observable<Facet[] \| null>` | Facets attached to the current search (`Search.filter.filters`) |
 | `selectFilterStatus$()` *(new in 2026.8.1)* | `Observable<LoadingStatus>` | Load status of those facets (`Search.filter.status`) |
+| `selectLastViewedOffset$()` *(new in 2026.9.1)* | `Observable<number \| null>` | Offset of the result page the user last viewed — read-only, written by the host on search success |
 
 #### Signals
 | Method | Returns | Initial value |
@@ -908,6 +909,7 @@ instance, so the per-service references below apply verbatim:
 | `presentNotificationSignal()` *(new in 2026.8.1)* | `Signal<boolean>` | `false` |
 | `filterFacetsSignal()` *(new in 2026.8.1)* | `Signal<Facet[] \| null>` | `null` |
 | `filterStatusSignal()` *(new in 2026.8.1)* | `Signal<LoadingStatus>` | `'pending'` |
+| `lastViewedOffsetSignal()` *(new in 2026.9.1)* | `Signal<number \| null>` | `null` |
 
 #### Snapshots
 | Method | Returns |
@@ -935,6 +937,7 @@ instance, so the per-service references below apply verbatim:
 | `isPresentNotification()` *(new in 2026.8.1)* | `Promise<boolean>` |
 | `getFilterFacets()` *(new in 2026.8.1)* | `Promise<Facet[] \| null>` |
 | `getFilterStatus()` *(new in 2026.8.1)* | `Promise<LoadingStatus>` |
+| `getLastViewedOffset()` *(new in 2026.9.1)* | `Promise<number \| null>` |
 
 #### Dispatch helpers
 `search(params, type?)` · `clearSearch()` · `setPageLimit(n)` · `setPageNumber(n)` · `setSortBy(s)` · `setIsSavedSearch(b)` · `setSearchNotificationMessage(s)` · `setPresentNotification(b)` *(new in 2026.8.1)* · `saveCurrentSearchTerm(s)` · `addLastSearchTerm(s)` · `setFullDisplayRecordYouCameFrom(s)` · `setDisplaySummary(b)` · `setIsSnackBarOpen(b)` · `setIsReportAProblemOpen(b)` · `setIsResourceRecommenderExpanded(b)` · `toggleExpandMyResults(b)` · `toggleSearchInFullText(b)` · `setExpandMyResultsValue(b)` *(new in 2026.8.1)* · `setSearchInFullTextValue(b)` *(new in 2026.8.1)* · `dispatch(action)`
@@ -1426,6 +1429,7 @@ A single search result entity. This is the main object you work with when readin
 | `expired` | `boolean?` | Whether the record is expired |
 | `origRecordId` | `string?` | Original record ID before de-duplication |
 | `registerUser` | `string?` | Register-user flag/identifier *(new in 2026.4.1)* |
+| `otherInstDelivery` | `DocDelivery?` | Delivery data held by another institution, populated on deep-search results *(new in 2026.9.1)* |
 
 > ⚠️ **Removed in 2026.4.1** — `unpaywallStatus` was removed. The host no longer loads Unpaywall links asynchronously; the URL is read inline from `pnx.links.linkunpaywall` (renamed from `unpaywalllink`).
 
@@ -1438,6 +1442,14 @@ A single search result entity. This is the main object you work with when readin
 | `SP` | SP adaptor |
 | `U` | Unified |
 | `NP` | Newspapers |
+| `v2v` | Version-to-version record *(new in 2026.9.1)* |
+| `SearchWebhook` | Result from a search webhook provider *(new in 2026.9.1)* |
+| `WorldCat` | WorldCat result *(new in 2026.9.1)* |
+| `Ebsco` | EBSCO result *(new in 2026.9.1)* |
+
+> Because `Doc.context` is typed as `Context`, code that exhaustively switches on
+> it (a `switch` with a `never` default, or a mapped lookup keyed by `Context`)
+> will now need arms for these four members.
 
 #### `Adaptor` (enum)
 
@@ -2261,7 +2273,20 @@ Fields added in 2026.8.1:
 
 #### `MappingTables`
 
-~50+ mapping tables used by the host for display transformations (resource types, icons, labels, etc.). Added in 2026.5.1: `'Resource Sharing Additional Information': MappingTable[]`. Added in 2026.6.1: `'Authority Search Operators': MappingTable[]`.
+~50+ mapping tables used by the host for display transformations (resource types, icons, labels, etc.). Added in 2026.5.1: `'Resource Sharing Additional Information': MappingTable[]`. Added in 2026.6.1: `'Authority Search Operators': MappingTable[]`. Added in 2026.9.1: `'Resource Sharing Account Allowance to Purpose': MappingTable[]`.
+
+> **Type correction in 2026.9.1** — `'Prima Direct Login To Other Institutions'`
+> was typed `any[]`; it is `MappingTable[]` in the host and is now declared as
+> such. Existing reads keep compiling (`any` narrowed to a real type), but field
+> access on its rows is now checked. The key keeps the host's `Prima` spelling.
+
+#### `AttributesMap`
+
+Gained `displayCollectionsTree: boolean` in 2026.9.1 — whether the collection-discovery tree is shown.
+
+#### `AdvancedSearchConfigurationOperators`
+
+Gained `dateRangeOptions: AdvancedSearchConfigurationValue` in 2026.9.1, alongside the existing `boolOperators`, `fields`, `languages`, `materialTypes`, and `operators`.
 
 #### `PrimoView`
 
@@ -2459,6 +2484,35 @@ View-model for requests with display lines (`firstLine`, `secondLine`, `thirdLin
 
 View-model for fines with `fineId`, `fineDate`, `title`, `sumToDisplay`, `fineType`, and display lines. Gained `ilsinstitutioncode?: string` in 2026.8.1 (set for cross-network fines).
 
+#### `fromNetworkMember` *(new in 2026.9.1)*
+
+`RequestItem`, `FineItem`, `LoanItem`, `MappedRequestItem`, and `MappedFineItem`
+each gained `fromNetworkMember?: boolean`. The host sets it on items that came
+from another institution in the consortium, so a remote rendering a combined
+activity list can label or group borrowed-from-elsewhere rows:
+
+```typescript
+const fromOtherInst = loans().filter(l => l.fromNetworkMember);
+```
+
+It is absent (not `false`) on items from the user's own institution, so test it
+for truthiness rather than comparing to `false`.
+
+#### `CrossNetworkFines` *(new in 2026.9.1)*
+
+| Field | Type |
+|---|---|
+| `fine` | `FineItem[]?` |
+| `finesTotalSum` | `number?` |
+
+> ⚠️ **Corrected type in 2026.9.1** — `CrossNetworkData.fines` was previously
+> declared as `CounterListOfActions` (`{ action: CounterAction[] }`). That never
+> matched the host, which has always sent `{ fine?, finesTotalSum? }` here, so
+> `crossNetworkData.fines.action` read `undefined` at runtime. The field is now
+> `CrossNetworkFines`. `CounterListOfActions` itself is unchanged and still
+> exported. Code reading `.fines.action` now fails to compile — read
+> `.fines.fine` / `.fines.finesTotalSum` instead.
+
 #### `BlockMessage`
 
 *New in 2026.8.1 — one patron block message, as stored in `AccountState.blocksList`. Read via `AccountStateService.selectBlocksList$()`; the host owns every write.*
@@ -2509,17 +2563,20 @@ Defined in `src/models/analytics.model.ts`. Const maps for consistent analytics 
 
 #### `EventsNames`
 
-Const object mapping ~57 event names (added in 2026.5.1: `TOPIC_OVERVIEW`, `LEGANTO_COURSE_INFO`, `EXPORT_ALL`; added in 2026.6.1: `MORE_FROM_THE_SAME`; added in 2026.8.1: `BLOCKS_PAGE_ACTIONS`, `FEATURED_RESULTS_BAR`, `RESULTS_PER_PAGE_CHANGED`), e.g.:
+Const object mapping 61 event names (added in 2026.5.1: `TOPIC_OVERVIEW`, `LEGANTO_COURSE_INFO`, `EXPORT_ALL`; added in 2026.6.1: `MORE_FROM_THE_SAME`; added in 2026.8.1: `BLOCKS_PAGE_ACTIONS`, `FEATURED_RESULTS_BAR`, `RESULTS_PER_PAGE_CHANGED`).
+
+Member names are `SCREAMING_SNAKE_CASE`; the *values* are the human-readable
+strings the host sends to analytics (`EventsNames.SEARCH === 'Search'`):
 
 ```typescript
 import { EventsNames } from '@libis/primo-shared-state';
 
-analytics.track(EventsNames.SearchExecuted, { query: '...' });
+analytics.track(EventsNames.SEARCH, { query: '...' });
 ```
 
 #### `PageNames`
 
-Const object mapping ~30 page name identifiers for page-view tracking.
+Const object mapping 32 page name identifiers for page-view tracking.
 
 #### `SearchTypes`
 
@@ -2640,7 +2697,7 @@ This package uses `YYYY.M.regenerateCount` versioning (e.g. `2026.4.1`):
 # After regenerating, build and pack:
 npm run build
 npm pack
-# → libis-primo-shared-state-2026.8.1.tgz
+# → libis-primo-shared-state-2026.9.1.tgz
 ```
 
 ### Cutting a release

@@ -93,6 +93,13 @@ export interface SearchState extends EntityState<Doc> {
   displaySummary: boolean;
   isSavedSearch: boolean;
   isResourceRecommenderExpanded: boolean;
+  /**
+   * Offset of the result page the user last viewed. Written by the host on
+   * `searchSuccessAction` from `searchParams.offset`; the host reads it back
+   * when returning to results from a full-display record. Read-only for
+   * remotes — no exported action writes it.
+   */
+  lastViewedOffset?: number;
 }
 
 export interface ViewConfigState {

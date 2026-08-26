@@ -1,5 +1,57 @@
 # Changelog
 
+## 2026.9.1 — 2026-08-26
+
+**September 2026 prerelease**, cut ahead of the release month from the September NDE extract (`src_bootstrap_ts.38bd85b2a495ac0b`), indexed with `npm run index-state` (34 slice directories scanned; 30 register a reducer in `StoreModule.forRoot`, plus `router` from `@ngrx/router-store` — 31 `AppState` keys).
+
+No action drift and **no breaking removals**: all 48 exported action creators still exist in the host with byte-identical type strings and matching payload shapes. One exported model field had its **type corrected** — see the note under `### Changed`.
+
+### Added
+
+- **`search.model.ts` — `Doc.otherInstDelivery?: DocDelivery`.** Delivery data held by another institution, populated on deep-search results.
+- **`search.model.ts` — `Context` enum gained `v2v`, `SearchWebhook`, `WorldCat`, `Ebsco`.** Note that code which switches exhaustively over `Context` (a `switch` with a `never` default, or a lookup map keyed by `Context`) now needs arms for these four members.
+- **`store.model.ts` — `SearchState.lastViewedOffset?: number`.** The host writes it on `searchSuccessAction` from `searchParams.offset` and reads it back when restoring the results page after a full-display record. Read-only: no exported action writes it.
+- **`SearchStateService`** — `lastViewedOffset` selector, all three variants: `selectLastViewedOffset$()` / `lastViewedOffsetSignal()` / `getLastViewedOffset()`. No dispatch helper, by design — the field is host-owned.
+- **`account.model.ts` — `fromNetworkMember?: boolean`** added to `RequestItem`, `FineItem`, `LoanItem`, `MappedRequestItem`, and `MappedFineItem`. Set by the host on consortium items that came from another member institution. It is *absent* rather than `false` on the patron's own items, so test it for truthiness.
+- **`account.model.ts` — `CrossNetworkFines`** interface (`fine?: FineItem[]`, `finesTotalSum?: number`).
+- **`view-config.model.ts`** — `AdvancedSearchConfigurationOperators.dateRangeOptions: AdvancedSearchConfigurationValue`; `AttributesMap.displayCollectionsTree: boolean`; `MappingTables['Resource Sharing Account Allowance to Purpose']: MappingTable[]`.
+
+### Changed
+
+- **⚠️ `CrossNetworkData.fines` type corrected** from `CounterListOfActions` (`{ action: CounterAction[] }`) to the new `CrossNetworkFines` (`{ fine?, finesTotalSum? }`). The old type **never matched the host** — `account.model.ts` in the NDE source has always declared this section as `{ fine?, finesTotalSum? }` — so any remote reading `crossNetworkData.fines.action` was reading `undefined` at runtime. This is the same class of correction as `SearchParams.searchTerm` in 2026.8.1: it converts a silent runtime `undefined` into a compile error.
+
+  **Affected code:** anything reading `CrossNetworkData.fines.action`. **Migration:** read `.fines.fine` (the `FineItem[]`) and `.fines.finesTotalSum`. Nothing was removed — `CounterListOfActions` and `CounterAction` are still exported and unchanged; only this one field's type changed.
+- **`view-config.model.ts` — `MappingTables['Prima Direct Login To Other Institutions']`** narrowed from `any[]` to `MappingTable[]`, matching the host. Existing reads keep compiling; field access on its rows is now type-checked. The key keeps the host's `Prima` spelling (not `Primo`) because that is the literal runtime key.
+
+### Changed — safety gate
+
+- **Exported set unchanged at 48.** Every exported type string was re-verified byte-for-byte against the September extract, and every exported action was re-checked against the host's effect graph for newly-attached HTTP effects. None appeared.
+- **New exclusions documented**, each verified against this extract:
+  - `barcodeSearchAction` / `barcodeSearchSuccessAction` / `barcodeSearchNoResultsAction` — a new barcode-search group. The trigger calls `barcodeSearchService.searchByBarcode()` over HTTP; the success action carries a server-authoritative `Doc` and its downstream effects navigate to full display and fire analytics; the no-results action drives host router navigation.
+  - `searchWithLastViewedOffsetAction` — pairs with the new `lastViewedOffset` field; its effect re-dispatches `searchAction`, running a fresh HTTP search.
+  - `handleDeepLinkForFiltersNoResultsFoundAction`, `initializeIsFiltersOpenFromStorage` — host-internal bootstrap effects.
+  - `loadViewConfigFailedAction` — terminal marker for a host-owned config load; `viewConfig` is server-authoritative and read-only for remotes.
+  - `requestSearch`, `searchWithUserSettingsAction`, `backFromFrbrVersionsSearchAction`, `updateBackToFullDisplayFromFrbrAction`, `loadNextItemsFromFullDisplayAction`, `loadPrevItemsFromFullDisplayAction`, `searchAndAppendLoadMoreAction`, `searchAndAppendSuccessAction` — all trigger HTTP search effects.
+  - `getSearchAnalyticsPayloadAction`, `sendDisplayFullRecordAnalytics` — analytics side-effects.
+
+### API symmetry
+
+- Audited every selector in all seven services: **all 85 selector groups expose the full Observable / Signal / Promise triple.** The one new selector this release (`lastViewedOffset`) shipped with all three variants in the same pass. No gaps were found to backfill.
+
+### Store model
+
+- `AppState` re-verified against `app.module.ts`'s `StoreModule.forRoot<AppState>({...})` map: 30 feature reducers plus `router`, matching the package's 31 keys exactly. The indexer additionally reports `deep-link`, `open-url`, `snippets`, and `meta-reducers` as slice directories; none of them registers a reducer (they hold only actions/effects/selectors, and `meta-reducers` holds a clear-state meta-reducer), so `AppState` correctly omits all four.
+- Seven slices remain fully typed; 24 remain opaque `Record<string, unknown>` stubs. No slice was added, renamed, or removed.
+- **Not added, deliberately:** `ScopesContextMap` and `SearchWithinJournalConfig` are declared in the host's `view-config.model.ts` but have zero references anywhere in the host source — dead declarations, not part of any config payload. `SearchHeaderConfig` is a UI component input contract (`Signal<string>` fields and an `onSubmit` callback, consumed via `input.required<SearchHeaderConfig>()`); it falls outside this package's state-only boundary and belongs to a future `primo-shared-ui`.
+
+### Documentation
+
+- **README.md** — install/pack version strings bumped to `2026.9.1`; `SearchStateService` Observables / Signals / Snapshots tables each gained a `lastViewedOffset` row; `Doc` table gained `otherInstDelivery`; `Context` enum table gained the four new members with a note about exhaustive switches; new `fromNetworkMember` and `CrossNetworkFines` sections under the account models, the latter carrying the migration note; `MappingTables` section documents the new table and the `any[]` → `MappingTable[]` correction; new `AttributesMap` and `AdvancedSearchConfigurationOperators` subsections.
+- **README.md — corrected a non-compiling snippet.** The `EventsNames` example called `EventsNames.SearchExecuted`, which has never existed: members are `SCREAMING_SNAKE_CASE`. Corrected to `EventsNames.SEARCH`, with a note that member names are screaming-snake and the *values* are the host's human-readable strings. The stale "~57 event names" count is now 61, and "~30 page name identifiers" is now 32 — both verified against `analytics.model.ts`.
+- **EXAMPLES.md — corrected the same class of error in the "Using Analytics Constants" snippet**, which invented `EventsNames.SearchExecuted`, `EventsNames.FullDisplayView`, `SearchTypes.Simple`, and `PageNames.FullDisplay`. Replaced with the real `EventsNames.SEARCH`, `EventsNames.DISPLAY_FULL_RECORD`, `SearchTypes.FACETSEARCH`, and `PageNames['fulldisplay']` (bracket access — `PageNames` is keyed by the host's quoted lowercase route identifiers).
+- **EXAMPLES.md** — two new sections: "Cross-Network Activity Labels", filtering the loans list on `fromNetworkMember` (and noting the list signals are `T[] | undefined` until the host's account effect resolves); and "Restoring the Results Page After Full Display", deriving a page number from `lastViewedOffsetSignal()` and `pageSizeSignal()`.
+- **Verification** — every symbol imported from `@libis/primo-shared-state` across all README and EXAMPLES code blocks (42 distinct symbols) was compiled against `dist/index.d.ts`; the only unresolved name is `deliverySuccessAction`, which is *intentional* — it appears in the safety-gate section as a counter-example of an import that must fail. Every API-shaped method call and every `EventsNames` / `PageNames` / `SearchTypes` member access in the docs was checked against the built declarations. Both new EXAMPLES sections were extracted and compiled clean under `strict`, as was a probe exercising all new APIs plus a `@ts-expect-error` asserting `CrossNetworkData.fines.action` no longer type-checks.
+
 ## 2026.8.1 — 2026-08-13
 
 Regenerated from the August 2026 NDE extract (`src_bootstrap_ts.b7377ab519c2c158`), indexed with `npm run index-state` (34 slice directories scanned; 31 of them register a reducer with `StoreModule.forRoot`).

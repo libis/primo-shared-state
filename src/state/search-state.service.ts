@@ -137,6 +137,17 @@ export class SearchStateService {
     return this.helper.select$((state: AppState) => state.Search?.selectedSortBy || null);
   }
 
+  /**
+   * Offset of the result page the user last viewed.
+   *
+   * Read-only: the host writes this on search success from `searchParams.offset`
+   * and reads it back when restoring the results page after a full-display
+   * record. No exported action writes it, so there is no dispatch helper.
+   */
+  selectLastViewedOffset$(): Observable<number | null> {
+    return this.helper.select$((state: AppState) => state.Search?.lastViewedOffset ?? null);
+  }
+
   selectLastSearchTerms$(): Observable<string[]> {
     return this.helper.select$((state: AppState) => state.Search?.lastSearchTerms || []);
   }
@@ -245,6 +256,10 @@ export class SearchStateService {
     return this.helper.selectOnce((state: AppState) => state.Search?.selectedSortBy || null);
   }
 
+  async getLastViewedOffset(): Promise<number | null> {
+    return this.helper.selectOnce((state: AppState) => state.Search?.lastViewedOffset ?? null);
+  }
+
   async getLastSearchTerms(): Promise<string[]> {
     return this.helper.selectOnce((state: AppState) => state.Search?.lastSearchTerms || []);
   }
@@ -349,6 +364,10 @@ export class SearchStateService {
 
   selectedSortBySignal(): Signal<string | null> {
     return this.helper.selectSignal((state: AppState) => state.Search?.selectedSortBy || null, null);
+  }
+
+  lastViewedOffsetSignal(): Signal<number | null> {
+    return this.helper.selectSignal((state: AppState) => state.Search?.lastViewedOffset ?? null, null);
   }
 
   lastSearchTermsSignal(): Signal<string[]> {

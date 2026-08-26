@@ -64,10 +64,31 @@
  * REMOVED IN 2026.6.1:
  * - resetUserSettingsSuccessAction — see safety note above.
  *
- * 2026.8.1: no actions added or removed. The August extract introduces no new
- * remote-safe actions; the exported set is unchanged at 48. The exclusion list
- * above was expanded to name every unexported action in the Search / filters /
- * user / featured-results slices, so the gate is auditable rather than implicit.
+ * NEWLY NAMED EXCLUSIONS IN 2026.9.1 (all verified against the September extract):
+ * - barcodeSearchAction — effect barcodeSearch$ calls
+ *   barcodeSearchService.searchByBarcode() over HTTP
+ * - barcodeSearchSuccessAction — carries a server-authoritative Doc; downstream
+ *   effects navigate to full display and fire analytics
+ * - barcodeSearchNoResultsAction — downstream effect drives router navigation
+ *   to the search page; host owns that redirect
+ * - searchWithLastViewedOffsetAction — effect createSearchWithLastViewedOffset$
+ *   re-dispatches searchAction, running a fresh HTTP search
+ * - handleDeepLinkForFiltersNoResultsFoundAction, initializeIsFiltersOpenFromStorage —
+ *   host-internal bootstrap effects (HTTP / sessionStorage reconciliation)
+ * - loadViewConfigFailedAction — terminal marker for a host-owned config load;
+ *   viewConfig is server-authoritative and read-only for remotes
+ * - requestSearch, searchWithUserSettingsAction, backFromFrbrVersionsSearchAction,
+ *   updateBackToFullDisplayFromFrbrAction, loadNextItemsFromFullDisplayAction,
+ *   loadPrevItemsFromFullDisplayAction, searchAndAppendLoadMoreAction,
+ *   searchAndAppendSuccessAction — all trigger HTTP search effects
+ * - getSearchAnalyticsPayloadAction, sendDisplayFullRecordAnalytics — analytics
+ *   side-effects (covered by the "Analytics send* actions" rule above)
+ *
+ * 2026.9.1: no actions added or removed — the exported set is unchanged at 48.
+ * All 48 exported type strings were re-verified byte-for-byte against the
+ * September extract. The September extract adds a barcode-search action group
+ * and searchWithLastViewedOffsetAction; none is remote-safe, and each is named
+ * in the exclusion list above.
  */
 
 import { createAction, props } from '@ngrx/store';

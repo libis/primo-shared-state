@@ -969,10 +969,10 @@ export class AnalyticsService {
   }
 
   trackSearchExecuted(query: string, scope: string): void {
-    this.trackEvent(EventsNames.SearchExecuted, {
+    this.trackEvent(EventsNames.SEARCH, {
       query,
       scope,
-      searchType: SearchTypes.Simple,
+      searchType: SearchTypes.FACETSEARCH,
     });
   }
 
@@ -984,13 +984,20 @@ export class AnalyticsService {
 
   // Example: track when user views full display
   trackFullDisplayView(recordId: string): void {
-    this.trackEvent(EventsNames.FullDisplayView, {
-      page: PageNames.FullDisplay,
+    this.trackEvent(EventsNames.DISPLAY_FULL_RECORD, {
+      page: PageNames['fulldisplay'],
       recordId,
     });
   }
 }
 ```
+
+> **Naming:** `EventsNames` members are `SCREAMING_SNAKE_CASE` and their values
+> are the human-readable strings the host reports (`EventsNames.SEARCH ===
+> 'Search'`). `PageNames` is keyed by the host's route identifiers — quoted
+> lowercase strings such as `'home'`, `'search'`, `'fulldisplay'` — so it is
+> indexed with brackets rather than dot access. `SearchTypes` currently has a
+> single member, `FACETSEARCH`.
 
 ## Filter Dispatch Helpers
 
@@ -1159,5 +1166,105 @@ export class SmartDashboardComponent implements OnInit {
   ) {}
 
   ngOnInit() {}
+}
+```
+
+## Cross-Network Activity Labels (new in 2026.9.1)
+
+In a consortium, a patron's loans, requests, and fines can come from another
+member institution. The host now flags those rows with `fromNetworkMember`, so a
+remote can group or label them without re-deriving the institution.
+
+The flag is **absent** (not `false`) on the patron's own items — test it for
+truthiness rather than comparing against `false`.
+
+```typescript
+import { Component, computed, inject } from '@angular/core';
+import { PrimoStateService, LoanItem } from '@libis/primo-shared-state';
+
+@Component({
+  selector: 'app-loans-by-origin',
+  template: `
+    <section>
+      <h3>From your library ({{ ownLoans().length }})</h3>
+      @for (loan of ownLoans(); track loan.itembarcode) {
+        <p>{{ loan.title }} — due {{ loan.duedate }}</p>
+      }
+    </section>
+
+    @if (networkLoans().length) {
+      <section class="network">
+        <h3>Borrowed from partner libraries ({{ networkLoans().length }})</h3>
+        @for (loan of networkLoans(); track loan.itembarcode) {
+          <p>{{ loan.title }} — {{ loan.ilsinstitutionname }}</p>
+        }
+      </section>
+    }
+  `,
+})
+export class LoansByOriginComponent {
+  private primo = inject(PrimoStateService);
+
+  // loansListSignal() is Signal<LoanItem[] | undefined> — it is `undefined`
+  // until the host's account effect has fetched the list.
+  private loans = this.primo.account.loansListSignal();
+
+  ownLoans = computed<LoanItem[]>(() =>
+    (this.loans() ?? []).filter(l => !l.fromNetworkMember)
+  );
+
+  networkLoans = computed<LoanItem[]>(() =>
+    (this.loans() ?? []).filter(l => l.fromNetworkMember)
+  );
+}
+```
+
+`fromNetworkMember` is available on `LoanItem`, `RequestItem`, `FineItem`,
+`MappedRequestItem`, and `MappedFineItem`, so the same filter works for the
+requests and fines lists.
+
+## Restoring the Results Page After Full Display (new in 2026.9.1)
+
+`Search.lastViewedOffset` records the offset of the result page the user was on
+when the last search succeeded. The host writes it on search success and reads
+it back when the user returns from a full-display record — a remote rendering
+its own "back to results" affordance can read the same value.
+
+This selector is **read-only**: no exported action writes it, so there is no
+dispatch helper. Dispatching a search with a different offset is what changes it.
+
+```typescript
+import { Component, computed, inject } from '@angular/core';
+import { PrimoStateService } from '@libis/primo-shared-state';
+
+@Component({
+  selector: 'app-back-to-results',
+  template: `
+    @if (pageNumber() !== null) {
+      <button (click)="backToResults()">
+        Back to results (page {{ pageNumber() }})
+      </button>
+    }
+  `,
+})
+export class BackToResultsComponent {
+  private primo = inject(PrimoStateService);
+
+  private offset = this.primo.search.lastViewedOffsetSignal();
+  private pageSize = this.primo.search.pageSizeSignal();
+
+  pageNumber = computed(() => {
+    const off = this.offset();
+    const size = this.pageSize();
+    if (off === null || !size) return null;
+    return Math.floor(off / size) + 1;
+  });
+
+  async backToResults(): Promise<void> {
+    const params = await this.primo.search.getSearchParams();
+    const offset = await this.primo.search.getLastViewedOffset();
+    if (!params) return;
+    this.primo.search.search({ ...params, offset: offset ?? 0 });
+  }
 }
 ```

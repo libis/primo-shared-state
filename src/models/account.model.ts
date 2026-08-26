@@ -83,6 +83,7 @@ export interface RequestItem {
   bookingenddate?: string;
   isExpanded: boolean;
   [key: string]: string | boolean | number | undefined;
+  fromNetworkMember?: boolean;   // set on cross-network (consortium) activity
 }
 
 export interface FavoriteItem {
@@ -107,6 +108,7 @@ export interface FineItem {
   title: string;
   type: string;
   [key: string]: string | boolean | undefined;
+  fromNetworkMember?: boolean;   // set on cross-network (consortium) activity
 }
 
 export interface RenewStatus {
@@ -146,6 +148,7 @@ export interface LoanItem {
   returnhour: string;
   isExpanded: boolean;
   [key: string]: string | RenewStatus | string[] | boolean | undefined;
+  fromNetworkMember?: boolean;   // set on cross-network (consortium) activity
 }
 
 export interface ExpandKeyValue {
@@ -206,6 +209,7 @@ export interface MappedRequestItem {
   requestdate?: string;
   resource?: string;
   requestDates: ExpandKeyValue[] | undefined;
+  fromNetworkMember?: boolean;   // set on cross-network (consortium) activity
 }
 
 export interface MappedFineItem {
@@ -224,6 +228,7 @@ export interface MappedFineItem {
   expandedDisplay: ExpandKeyValue[];
   /** ILS institution the fine belongs to; set for cross-network fines. */
   ilsinstitutioncode?: string;
+  fromNetworkMember?: boolean;   // set on cross-network (consortium) activity
 }
 
 /**
@@ -304,10 +309,25 @@ export interface CrossNetworkResponse {
   data: CrossNetworkData;
 }
 
+/**
+ * Fines section of a cross-network activity response.
+ *
+ * NOTE (2026.9.1): `CrossNetworkData.fines` was previously typed as
+ * `CounterListOfActions` (`{ action: CounterAction[] }`). That never matched
+ * the host — `account.model.ts` in the NDE source has always declared this
+ * section as `{ fine?, finesTotalSum? }`, so reading `.fines.action` returned
+ * `undefined` at runtime. The type is corrected here; `CounterListOfActions`
+ * itself is still exported and unchanged.
+ */
+export interface CrossNetworkFines {
+  fine?: FineItem[];
+  finesTotalSum?: number;
+}
+
 export interface CrossNetworkData {
   requests: RequestsData;
   loans: Loans;
-  fines: CounterListOfActions;
+  fines: CrossNetworkFines;
 }
 
 export interface RequestsData {

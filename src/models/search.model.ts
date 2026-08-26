@@ -109,6 +109,7 @@ export interface Doc {
   expired?: boolean;
   origRecordId?: string;
   registerUser?: string;          // indicator to show the register button
+  otherInstDelivery?: DocDelivery; // deep-search: delivery data from another institution
 }
 
 export enum Adaptor {
@@ -130,7 +131,11 @@ export enum Context {
   PC = "PC",
   SP = "SP",
   U = "U",
-  NP = "NP"
+  NP = "NP",
+  v2v = "v2v",
+  SearchWebhook = "SearchWebhook",
+  WorldCat = "WorldCat",
+  Ebsco = "Ebsco"
 }
 
 export interface ThumbnailForCD {

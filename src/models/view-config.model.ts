@@ -76,6 +76,7 @@ export interface AdvancedSearchConfigurationOperators {
   languages: AdvancedSearchConfigurationValue;
   materialTypes: AdvancedSearchConfigurationValue;
   operators: AdvancedSearchConfigurationValue;
+  dateRangeOptions: AdvancedSearchConfigurationValue;
 }
 
 export interface AdvancedSearchConfigurationValue {
@@ -142,7 +143,7 @@ export interface HomepageCustomization {
 export interface MappingTables {
   'Citation Linker Definitions':                         MappingTable[];
   'Request (Hold and Booking) Optional Parameters':      MappingTable[];
-  'Prima Direct Login To Other Institutions':            any[];
+  'Prima Direct Login To Other Institutions':            MappingTable[];
   'Library Level List':                                  AlmaViewItConfig[];
   'Personalize Your Results Disciplines Fields':         MappingTable[];
   'Personal Setting Fields':                             MappingTable[];
@@ -218,6 +219,7 @@ export interface MappingTables {
   'Authority Search Sort':                               MappingTable[];
   'Authority Search Operators':                          MappingTable[];
   'Resource Sharing Additional Information':             MappingTable[];
+  'Resource Sharing Account Allowance to Purpose':       MappingTable[];
 }
 
 export interface MappingTable {
@@ -298,6 +300,7 @@ export interface AttributesMap {
   virtualBrowseType: string;
   editMyLibraryCard: boolean;
   mayAlsoBeHeldByEnabled: boolean;
+  displayCollectionsTree: boolean;
 }
 
 export interface AutoCompleteEnabledMap {
