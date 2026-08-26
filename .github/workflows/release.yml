@@ -175,8 +175,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version="${{ needs.validate.outputs.version }}"
-          gh release create "$version" \
-            --title "$version" \
-            --notes-file release-notes.md \
-            --verify-tag \
-            ./*.tgz
+          if gh release view "$version" > /dev/null 2>&1; then
+            echo "Release $version already exists. Updating..."
+            gh release edit "$version" \
+              --notes-file release-notes.md
+          else
+            gh release create "$version" \
+              --title "$version" \
+              --notes-file release-notes.md \
+              --verify-tag \
+              ./*.tgz
+          fi
