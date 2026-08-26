@@ -77,9 +77,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node 20 went end-of-life and GitHub deprecated it on the runners. 22 is
+      # the current LTS and is what the 2026.9.1 tarball was verified against.
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
 
       # `npm ci` (not `npm install`) so the build uses exactly the locked
