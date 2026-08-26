@@ -175,10 +175,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version="${{ needs.validate.outputs.version }}"
+          # A release can already exist before this workflow runs — publishing a
+          # draft release from the GitHub UI creates the tag, and that tag push is
+          # what triggers this run. In that case `gh release create` would fail, so
+          # we edit instead. `gh release edit` does NOT touch assets, so the upload
+          # has to be an explicit second call: without it the release ships with no
+          # tarball, which is what happened to 2026.9.1.
           if gh release view "$version" > /dev/null 2>&1; then
-            echo "Release $version already exists. Updating..."
+            echo "Release $version already exists — updating notes and uploading the tarball."
             gh release edit "$version" \
               --notes-file release-notes.md
+            gh release upload "$version" ./*.tgz --clobber
           else
             gh release create "$version" \
               --title "$version" \
@@ -186,3 +193,19 @@ jobs:
               --verify-tag \
               ./*.tgz
           fi
+
+      # The whole point of the release is the tarball. Fail loudly if it is
+      # missing rather than leaving a green run beside an empty release.
+      - name: Verify release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${{ needs.validate.outputs.version }}"
+          expected="libis-primo-shared-state-${version}.tgz"
+          if ! gh release view "$version" --json assets \
+                 --jq '.assets[].name' | grep -qx "$expected"; then
+            echo "::error::Release $version has no '$expected' asset attached."
+            echo "::error::Consumers install from the tarball, so an assetless release is not a release."
+            exit 1
+          fi
+          echo "Release asset '$expected' is attached."
