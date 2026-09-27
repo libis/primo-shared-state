@@ -1268,3 +1268,47 @@ export class BackToResultsComponent {
   }
 }
 ```
+
+## Research Mode and Natural-Language Queries (new in 2026.10.1)
+
+When the backend classifies a query as natural language, the host attaches an
+`NlsSearchObject` to the search metadata and may flag the result set with
+`displayRA` (offer the embedded Research Assistant). The resource-type bar also
+has a "Research mode" tab, whose selection lives in `Search.researchMode`.
+
+`nlsSearchObject`, `displayRA` and the offset-limit notice are **read-only**.
+Research mode is writable through `setResearchMode(b)`, a pure UI write that
+does not trigger a search. The host resets it to `false` on its own whenever a
+resource-type filter is selected.
+
+```typescript
+import { Component, computed, inject } from '@angular/core';
+import { PrimoStateService } from '@libis/primo-shared-state';
+
+@Component({
+  selector: 'app-nls-banner',
+  template: `
+    @if (nls(); as q) {
+      <p>
+        Interpreted "{{ q.originalUserQuery }}" as <code>{{ q.primoQuery }}</code>
+      </p>
+    }
+    @if (offerResearchMode()) {
+      <button (click)="primo.search.setResearchMode(true)">Switch to research mode</button>
+    }
+    @if (offsetLimitHit()) {
+      <p>Showing the furthest page the catalogue allows.</p>
+    }
+  `,
+})
+export class NlsBannerComponent {
+  protected primo = inject(PrimoStateService);
+
+  nls = this.primo.search.nlsSearchObjectSignal();
+  private displayRA = this.primo.search.displayRASignal();
+  private researchMode = this.primo.search.researchModeSignal();
+  offsetLimitHit = this.primo.search.isOffsetLimitNotificationVisibleSignal();
+
+  offerResearchMode = computed(() => this.displayRA() && !this.researchMode());
+}
+```

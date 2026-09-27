@@ -338,6 +338,7 @@ export interface ViewOrgLevel {
   'institution-id': number;
   'institution-code': string;
   'network-zone-code': string;
+  'network-zone-id'?: number;
 }
 
 export interface Scope {
@@ -475,6 +476,8 @@ export interface SystemConfiguration {
   /** First day of the week for booking/date pickers (0 = Sunday). */
   calendar_week_start: number;
   hide_update_login_credentials_external_users: boolean;
+  /** Enables the Research Assistant embedded in the search results page (as opposed to its standalone page). */
+  enable_embedded_research_assistant: boolean;
 }
 
 export interface HideRapidoExpandLinkMap {

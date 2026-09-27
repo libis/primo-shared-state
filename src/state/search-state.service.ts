@@ -1,7 +1,7 @@
 import { Injectable, Signal } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
-import { Doc, Facet, SearchParams, SearchMetaData } from '../models/search.model';
+import { Doc, Facet, NlsSearchObject, SearchParams, SearchMetaData } from '../models/search.model';
 import { LoadingStatus } from '../models/state.const';
 import { AppState } from '../models/store.model';
 import { StateHelper } from '../utils/state-helper';
@@ -25,6 +25,7 @@ import {
   setPresentNotificationAction,
   changePcAvailabilityToggleValue,
   changeSearchInFullTextToggleValue,
+  updateResearchModeSelectedAction,
 } from '../actions/shared-actions';
 
 /**
@@ -180,6 +181,32 @@ export class SearchStateService {
   }
 
   /**
+   * Whether the host is showing the "offset limit" notice (the requested page is
+   * beyond the backend's maximum result offset).
+   *
+   * Read-only: the host sets and clears it around its own searches. No exported
+   * action writes it, so there is no dispatch helper.
+   */
+  selectIsOffsetLimitNotificationVisible$(): Observable<boolean> {
+    return this.helper.select$((state: AppState) => state.Search?.isOffsetLimitNotificationVisible || false);
+  }
+
+  /** Whether the "Research mode" tab of the resource-type bar is selected. Counterpart read for {@link setResearchMode}. */
+  selectResearchMode$(): Observable<boolean> {
+    return this.helper.select$((state: AppState) => state.Search?.researchMode ?? false);
+  }
+
+  /** Whether the host offers the embedded Research Assistant for the current result set (`SearchData.displayRA`). Read-only. */
+  selectDisplayRA$(): Observable<boolean> {
+    return this.helper.select$((state: AppState) => state.Search?.searchResultsMetaData?.displayRA ?? false);
+  }
+
+  /** Natural-language interpretation of the current query, if the backend classified it as one. Read-only. */
+  selectNlsSearchObject$(): Observable<NlsSearchObject | null> {
+    return this.helper.select$((state: AppState) => state.Search?.searchResultsMetaData?.nlsSearchObject ?? null);
+  }
+
+  /**
    * Get all documents once (snapshot)
    */
   async getAllDocs(): Promise<Doc[]> {
@@ -286,6 +313,22 @@ export class SearchStateService {
 
   async getFilterStatus(): Promise<LoadingStatus> {
     return this.helper.selectOnce((state: AppState) => state.Search?.filter?.status || 'pending');
+  }
+
+  async isOffsetLimitNotificationVisible(): Promise<boolean> {
+    return this.helper.selectOnce((state: AppState) => state.Search?.isOffsetLimitNotificationVisible || false);
+  }
+
+  async isResearchMode(): Promise<boolean> {
+    return this.helper.selectOnce((state: AppState) => state.Search?.researchMode ?? false);
+  }
+
+  async isDisplayRA(): Promise<boolean> {
+    return this.helper.selectOnce((state: AppState) => state.Search?.searchResultsMetaData?.displayRA ?? false);
+  }
+
+  async getNlsSearchObject(): Promise<NlsSearchObject | null> {
+    return this.helper.selectOnce((state: AppState) => state.Search?.searchResultsMetaData?.nlsSearchObject ?? null);
   }
 
   /**
@@ -398,6 +441,22 @@ export class SearchStateService {
     return this.helper.selectSignal((state: AppState) => state.Search?.filter?.status || 'pending', 'pending' as LoadingStatus);
   }
 
+  isOffsetLimitNotificationVisibleSignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: AppState) => state.Search?.isOffsetLimitNotificationVisible || false, false);
+  }
+
+  researchModeSignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: AppState) => state.Search?.researchMode ?? false, false);
+  }
+
+  displayRASignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: AppState) => state.Search?.searchResultsMetaData?.displayRA ?? false, false);
+  }
+
+  nlsSearchObjectSignal(): Signal<NlsSearchObject | null> {
+    return this.helper.selectSignal((state: AppState) => state.Search?.searchResultsMetaData?.nlsSearchObject ?? null, null);
+  }
+
   // ── Typed dispatch helpers ──────────────────────────────────────────────────
 
   search(searchParams: SearchParams, searchType?: string): void {
@@ -485,5 +544,13 @@ export class SearchStateService {
    */
   setSearchInFullTextValue(searchInFullTextToggleValue: boolean): void {
     this.helper.dispatch(changeSearchInFullTextToggleValue({ searchInFullTextToggleValue }));
+  }
+
+  /**
+   * Selects (`true`) or deselects (`false`) the "Research mode" tab of the
+   * resource-type bar. Pure UI write — no search is triggered.
+   */
+  setResearchMode(mode: boolean): void {
+    this.helper.dispatch(updateResearchModeSelectedAction({ mode }));
   }
 }

@@ -85,6 +85,14 @@ export class UserStateService {
   }
 
   /**
+   * Authentication system of the current session (e.g. `SAML`, `CAS`,
+   * `SOCIAL_VIA_ALMA`), from the decoded JWT; `undefined` when absent.
+   */
+  selectAuthenticationSystem$(): Observable<string | undefined> {
+    return this.helper.select$((state: AppState) => state.user?.decodedJwt?.authenticationSystem);
+  }
+
+  /**
    * Why the last logout happened (`'user'` or `'timeout'`), or `undefined` when
    * it has been cleared. Counterpart read for {@link resetLogoutReason}.
    */
@@ -144,6 +152,10 @@ export class UserStateService {
     return this.helper.selectOnce((state: AppState) => state.user?.decodedJwt?.userGroup || 'GUEST');
   }
 
+  async getAuthenticationSystem(): Promise<string | undefined> {
+    return this.helper.selectOnce((state: AppState) => state.user?.decodedJwt?.authenticationSystem);
+  }
+
   async getLogoutReason(): Promise<LogoutReason | undefined> {
     return this.helper.selectOnce((state: AppState) => state.user?.logoutReason);
   }
@@ -196,6 +208,10 @@ export class UserStateService {
 
   userGroupSignal(): Signal<string> {
     return this.helper.selectSignal((state: AppState) => state.user?.decodedJwt?.userGroup || 'GUEST', 'GUEST');
+  }
+
+  authenticationSystemSignal(): Signal<string | undefined> {
+    return this.helper.selectSignal((state: AppState) => state.user?.decodedJwt?.authenticationSystem, undefined);
   }
 
   logoutReasonSignal(): Signal<LogoutReason | undefined> {

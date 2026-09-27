@@ -1,5 +1,64 @@
 # Changelog
 
+## 2026.10.1 — 2026-09-27
+
+**October 2026 prerelease**, cut ahead of the release month from the October NDE extract (`src_bootstrap_ts.2ddf78233771ee99`), indexed with `npm run index-state` (35 slice directories scanned; 31 register a reducer in `StoreModule.forRoot`, plus `router` from `@ngrx/router-store` — 32 `AppState` keys).
+
+All 48 previously exported action creators still exist in the host with byte-identical type strings. One gained a host-only optional prop (see *Changed — safety gate*). **No breaking removals.** One exported constant is now deprecated because the host dropped it (see *Deprecated*).
+
+### Added
+
+- **`store.model.ts` — new `tags` slice** added to `AppState` as an opaque `TagsState = Record<string, unknown>` stub. The host registers a new `tags` reducer (`tags`, `status`, `searchResults`, `searchStatus`); no service targets it. Opaque-stub count goes from 24 to 25.
+- **`store.model.ts` — `SearchState`** gained `isOffsetLimitNotificationVisible: boolean` (the host's "requested page is beyond the backend's max offset" notice) and `researchMode: boolean` (the "Research mode" tab of the resource-type bar).
+- **`search.model.ts`** — new `NlsSearchObject` interface (`originalUserQuery`, `booleanQuery`, `primoQuery`, `qInclude`, `qExclude`, `multiFacets`); `SearchData.nlsSearchObject?: NlsSearchObject`; `SearchData.displayRA?: boolean`; `SearchParams.classify?: boolean`; `FullDisplayQueryParams.hideTopNavigation?: boolean`.
+- **`user.model.ts` — `DecodedJwt.authenticationSystem?: string`.** The host declares it as required. It is **optional here** so that remotes building a `DecodedJwt` literal for `setDecodedJwt()` keep compiling.
+- **`view-config.model.ts`** — `SystemConfiguration.enable_embedded_research_assistant: boolean`; `ViewOrgLevel['network-zone-id']?: number`.
+- **`analytics.model.ts`** — `EventsNames.TAGS_ACTIONS` (`'Tags Actions'`).
+- **`shared-actions.ts` — `updateResearchModeSelectedAction`** (`[Search] Update ResearchMode tab selected`, `{ mode: boolean }`). It is reducer-only: no host effect listens to it. The exported set grows from 48 to 49.
+- **`SearchStateService`** — four new selectors, each with all three variants:
+  - `selectIsOffsetLimitNotificationVisible$()` / `isOffsetLimitNotificationVisibleSignal()` / `isOffsetLimitNotificationVisible()` (read-only)
+  - `selectResearchMode$()` / `researchModeSignal()` / `isResearchMode()`
+  - `selectDisplayRA$()` / `displayRASignal()` / `isDisplayRA()` (read-only)
+  - `selectNlsSearchObject$()` / `nlsSearchObjectSignal()` / `getNlsSearchObject()` (read-only)
+
+  There is also one new dispatch helper, `setResearchMode(b)`.
+- **`UserStateService`** — `selectAuthenticationSystem$()` / `authenticationSystemSignal()` / `getAuthenticationSystem()`, mirroring the host's `selectAuthenticationSystem`.
+
+### Deprecated
+
+- **`SUPPORTED_ELECTRONIC_TYPES_FOR_DIGITAL_VIEWER`** (`search.model.ts`) is now `@deprecated`. The host no longer defines or uses it anywhere in the October extract. The user confirmed keeping it exported for now rather than removing it, so existing imports still compile. It will be removed in a future release.
+
+### Changed — safety gate
+
+- **`searchAction` payload intentionally left narrower than the host's.** The host added `isOffsetLimitNotificationVisible?: boolean` to `[Search] Load search`. Only the host sets it, from `createSearchWithLastViewedOffset$`, and its new `showOrHideOffsetLimitNotification$` effect uses it to show or clear the offset-limit notice. A remote-initiated search omits it, which is exactly what makes the host clear a stale notice. The package's `searchAction` therefore does not accept it, and a `@ts-expect-error` probe confirms this.
+- **New exclusions documented**, each verified against this extract:
+  - `showOffsetLimitNotification` / `hideOffsetLimitNotification` — these are reducer-only, but the flag mirrors a server-side condition and host effects reconcile it on every `searchAction`.
+  - `searchCanceledAction` — a host search-service marker after a limit-offset error.
+  - `loadTagsAction` / `searchTagsAction` — the `loadTags$` / `searchTags$` effects fire HTTP. Their success, failure, and clear actions are terminal steps of host-owned lookups with server-authoritative payloads.
+- Re-checked every exported action against the October effect graph. `searchAction` now has one more listener (`showOrHideOffsetLimitNotification$`, which reads state and emits a UI-flag action with no HTTP). Its existing classification as a command the remote legitimately issues is unchanged. No other exported action gained a listener.
+
+### API symmetry
+
+- Audited all seven services. All **90 selector groups** (85 existing plus 5 new) expose the full Observable / Signal / Promise triple. No gaps needed backfilling.
+
+### Store model
+
+- `AppState` re-verified against `app.module.ts`'s `StoreModule.forRoot` map. It has 31 feature reducers (new: `tags`) plus `router`, for 32 keys. `deep-link`, `open-url`, `snippets`, and `meta-reducers` still register no reducer and remain omitted.
+- Seven slices are fully typed and 25 are opaque stubs. No slice was renamed or removed.
+- **Not changed, deliberately:** as in earlier releases, the curated simplifications of host view-config types (`UIComponents` index signature, `FacetSort`, `TabScopesMap`, `LocationsTileInterface.rta: string`, and so on) and the optional `UserSettings` fields are kept. The host still declares the raw shapes.
+
+### Documentation
+
+- **README.md**:
+  - Pack/install version strings bumped to `2026.10.1`.
+  - The `UserStateService` and `SearchStateService` Observables / Signals / Snapshots tables gained rows for all new selectors, and `setResearchMode(b)` was added to the Search dispatch helpers.
+  - Model tables gained `DecodedJwt.authenticationSystem` (with the optionality note), `SearchParams.classify`, `SearchData.nlsSearchObject` / `displayRA`, a new `NlsSearchObject` section, `FullDisplayQueryParams.hideTopNavigation`, `SystemConfiguration.enable_embedded_research_assistant`, and `ViewOrgLevel['network-zone-id']`.
+  - `EventsNames` count updated from 61 to 62 (`TAGS_ACTIONS`).
+  - `updateResearchModeSelectedAction` added to the Search UI actions table and the exported-actions list. The action count went from 48 to 49, and the opaque-stub count from 24 to 25.
+  - A footnote on `searchAction` explains the unmirrored host prop, and `SUPPORTED_ELECTRONIC_TYPES_FOR_DIGITAL_VIEWER` is marked deprecated.
+- **EXAMPLES.md** — new section, "Research Mode and Natural-Language Queries", using `nlsSearchObjectSignal()`, `displayRASignal()`, `researchModeSignal()`, `isOffsetLimitNotificationVisibleSignal()`, and `setResearchMode()`.
+- **Verification** — every symbol imported from `@libis/primo-shared-state` across README and EXAMPLES (43 distinct) was resolved against the built `dist/index.d.ts`. The only unresolved name is the intentional `deliverySuccessAction` counter-example. The new EXAMPLES section and a probe exercising every new API were compiled clean under `strict`.
+
 ## 2026.9.1 — 2026-08-26
 
 **September 2026 prerelease**, cut ahead of the release month from the September NDE extract (`src_bootstrap_ts.38bd85b2a495ac0b`), indexed with `npm run index-state` (34 slice directories scanned; 30 register a reducer in `StoreModule.forRoot`, plus `router` from `@ngrx/router-store` — 31 `AppState` keys).

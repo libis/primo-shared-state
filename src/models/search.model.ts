@@ -48,6 +48,8 @@ export interface SearchParams {
   authorityQuery?: string,        // Used for Authority search
   originatingSystem?: string,     // Used for Authority search
   originatingSystemId?: string,   // Used for Authority search
+  /** Set by the host's search bar on a user-submitted query to request natural-language classification of the query. */
+  classify?: boolean,
 }
 
 export interface SearchParamsWithStrParams   extends Omit<SearchParams, 'qInclude' | 'qExclude' | 'multiFacets'> {
@@ -70,6 +72,10 @@ export interface SearchData {
   expandedSearchAfterZeroResults?: boolean;
   /** Featured-results payload; present only when the scope has a featured-results bar configured. */
   featuredResultJson?: FeaturedResultsData;
+  /** Natural-language-search interpretation of the query; present only when the backend classified the query as natural language. */
+  nlsSearchObject?: NlsSearchObject;
+  /** Whether the host should offer the embedded Research Assistant for this result set. */
+  displayRA?: boolean;
 }
 
 export interface FullDisplayQueryParams {
@@ -85,6 +91,7 @@ export interface FullDisplayQueryParams {
   lang?: string;
   newspapersSearch?:boolean;
   authfulldisplay?: boolean;
+  hideTopNavigation?: boolean;
 }
 
 export interface FullDisplayParams {
@@ -153,6 +160,11 @@ export interface MergedDelivery {
   recordId: string;
 }
 
+/**
+ * @deprecated No longer defined or used by the Primo host (removed in the
+ * October 2026 NDE extract). Kept so existing imports keep compiling; it will
+ * be removed in a future release. Do not rely on it tracking host behaviour.
+ */
 export const SUPPORTED_ELECTRONIC_TYPES_FOR_DIGITAL_VIEWER = ["jpg", "tif", "tiff", "gif", "png", "pdf", "jp2","jpeg"];
 
 export interface EsploroResearchFile {
@@ -515,6 +527,20 @@ export interface Timelog {
   COMBINED_SEARCH_TIME:                          number;
   PROCESS_COMBINED_RESULTS:                      number;
   FEATURED_SEARCH_TIME:                          number;
+}
+
+/**
+ * Natural-language-search interpretation returned in `SearchData.nlsSearchObject`
+ * when the backend classifies the user's query as natural language. Read-only:
+ * produced server-side.
+ */
+export interface NlsSearchObject {
+  originalUserQuery: string;
+  booleanQuery: string;
+  primoQuery: string;
+  qInclude: string[];
+  qExclude: string[];
+  multiFacets: string[];
 }
 
 export interface Enrichment {

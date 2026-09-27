@@ -12,7 +12,7 @@ Shared state models and Angular services for the Primo module-federation archite
 | **Facade** (`src/state/primo-state.service.ts`) | `PrimoStateService` — the single entry point. Inject it once and reach every domain: `primo.search`, `primo.filters`, `primo.user`, `primo.config`, `primo.entity`, `primo.account` |
 | **Models** (`src/models/`) | TypeScript interfaces mirroring the host's state shapes: `SearchParams`, `Doc`, `UserState`, `FilterState`, `ViewConfigData`, `SystemConfiguration`, `EntityViewModel`, `accountViewModel`, `LoanItem`, `BlockMessage`, `FeaturedResultsData`, `EventsNames`, `LoadingStatus`, … plus `AppState` (the root store shape) |
 | **Services** (`src/state/`) | Six `providedIn: 'root'` Angular services — `UserStateService`, `SearchStateService`, `FilterStateService` (read/write), `ViewConfigStateService`, `EntityStateService`, `AccountStateService` (read-only) — each offering Observable streams, one-shot Promise snapshots, Angular Signals, and typed dispatch helpers where appropriate. **Deprecated for direct injection since 2026.6.1** — reach them through `PrimoStateService` instead |
-| **Actions** (`src/actions/`) | `shared-actions.ts` — 48 NgRx action creators whose `type` strings match the host's reducers **byte-for-byte** |
+| **Actions** (`src/actions/`) | `shared-actions.ts` — 49 NgRx action creators whose `type` strings match the host's reducers **byte-for-byte** |
 | **Utility** (`src/utils/`) | `StateHelper` — thin wrapper around `Store` used internally by all services |
 
 ### Table of contents
@@ -90,7 +90,7 @@ npm run build
 
 # 3. Create a distributable tarball
 npm pack
-# → libis-primo-shared-state-2026.9.1.tgz
+# → libis-primo-shared-state-2026.10.1.tgz
 ```
 
 ---
@@ -101,14 +101,14 @@ npm pack
 
 ```bash
 npm pack
-cp libis-primo-shared-state-2026.9.1.tgz path/to/NDE_customModule/nde/
+cp libis-primo-shared-state-2026.10.1.tgz path/to/NDE_customModule/nde/
 ```
 
 ### Step 2 — add the `file:` dependency to the remote's `package.json`
 
 ```json
 "dependencies": {
-  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.9.1.tgz"
+  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.10.1.tgz"
 }
 ```
 
@@ -216,7 +216,7 @@ import { Store } from '@ngrx/store';
 store.select((state: AppState) => state.Search.searchResultsMetaData?.info?.total);
 ```
 
-Seven slices are fully typed — the six the services read (`Search`, `user`, `filters`, `account`, `viewConfig`, `linked-data-entity`) plus `featured-results`, typed since 2026.8.1 because its payload is already public via `SearchData.featuredResultJson`. The other 24 are declared as opaque `Record<string, unknown>` — they type-check at the slice-access level but you'll need to narrow field reads yourself. Feature-key casing in `AppState` mirrors each reducer's `StoreModule.forFeature(...)` registration verbatim (mixed PascalCase `Search`, camelCase `viewConfig`, kebab-case `linked-data-entity`, lowercase `user`) — selectors must match the exact runtime key.
+Seven slices are fully typed — the six the services read (`Search`, `user`, `filters`, `account`, `viewConfig`, `linked-data-entity`) plus `featured-results`, typed since 2026.8.1 because its payload is already public via `SearchData.featuredResultJson`. The other 25 are declared as opaque `Record<string, unknown>` — they type-check at the slice-access level but you'll need to narrow field reads yourself. Feature-key casing in `AppState` mirrors each reducer's `StoreModule.forFeature(...)` registration verbatim (mixed PascalCase `Search`, camelCase `viewConfig`, kebab-case `linked-data-entity`, lowercase `user`) — selectors must match the exact runtime key.
 
 ### The facade: PrimoStateService
 
@@ -704,6 +704,7 @@ These write a simple scalar to the store. No host effect listens to them, so the
 | `updateLastSearchTermsAction` | Upserts a term into the last-search-terms list |
 | `updateFullDisplayRecordYouCameFromAction` | Records the full-display record the user navigated from |
 | `setIsResourceRecommenderExpandedAction` | Controls Resource Recommender panel expansion |
+| `updateResearchModeSelectedAction` | Selects/deselects the "Research mode" tab of the resource-type bar (reducer-only) |
 | `resourceTypeFilterSelectedAction` | Selects a resource type filter (triggers new search; requires `index` for host focus management — pass `0` if unknown) |
 
 #### ✅ Exported success/failed actions — terminal writes with no downstream effects
@@ -811,6 +812,7 @@ instance, so the per-service references below apply verbatim:
 | `selectUserSettings$()` | `Observable<UserSettings \| undefined>` | User preferences |
 | `selectUserName$()` | `Observable<string \| undefined>` | Username from JWT |
 | `selectUserGroup$()` | `Observable<string>` | User group (default `'GUEST'`) |
+| `selectAuthenticationSystem$()` *(new in 2026.10.1)* | `Observable<string \| undefined>` | Authentication system of the session (`SAML`, `CAS`, `SOCIAL_VIA_ALMA`, …) from the decoded JWT |
 | `selectLogoutReason$()` *(new in 2026.8.1)* | `Observable<LogoutReason \| undefined>` | Why the last logout happened — read counterpart to `resetLogoutReason()` |
 | `selectLoginFromState$()` *(new in 2026.8.1)* | `Observable<string \| undefined>` | Pre-login route — read counterpart to `setLoginFromState()` |
 | `selectStatus$()` *(new in 2026.8.1)* | `Observable<LoadingStatus>` | JWT resolution status |
@@ -826,6 +828,7 @@ instance, so the per-service references below apply verbatim:
 | `userSettingsSignal()` | `Signal<UserSettings \| undefined>` | `undefined` |
 | `userNameSignal()` | `Signal<string \| undefined>` | `undefined` |
 | `userGroupSignal()` | `Signal<string>` | `'GUEST'` |
+| `authenticationSystemSignal()` *(new in 2026.10.1)* | `Signal<string \| undefined>` | `undefined` |
 | `logoutReasonSignal()` *(new in 2026.8.1)* | `Signal<LogoutReason \| undefined>` | `undefined` |
 | `loginFromStateSignal()` *(new in 2026.8.1)* | `Signal<string \| undefined>` | `undefined` |
 | `statusSignal()` *(new in 2026.8.1)* | `Signal<LoadingStatus>` | `'pending'` |
@@ -841,6 +844,7 @@ instance, so the per-service references below apply verbatim:
 | `getUserSettings()` | `Promise<UserSettings \| undefined>` |
 | `getUserName()` | `Promise<string \| undefined>` |
 | `getUserGroup()` | `Promise<string>` |
+| `getAuthenticationSystem()` *(new in 2026.10.1)* | `Promise<string \| undefined>` |
 | `getLogoutReason()` *(new in 2026.8.1)* | `Promise<LogoutReason \| undefined>` |
 | `getLoginFromState()` *(new in 2026.8.1)* | `Promise<string \| undefined>` |
 | `getStatus()` *(new in 2026.8.1)* | `Promise<LoadingStatus>` |
@@ -882,6 +886,10 @@ instance, so the per-service references below apply verbatim:
 | `selectFilterFacets$()` *(new in 2026.8.1)* | `Observable<Facet[] \| null>` | Facets attached to the current search (`Search.filter.filters`) |
 | `selectFilterStatus$()` *(new in 2026.8.1)* | `Observable<LoadingStatus>` | Load status of those facets (`Search.filter.status`) |
 | `selectLastViewedOffset$()` *(new in 2026.9.1)* | `Observable<number \| null>` | Offset of the result page the user last viewed — read-only, written by the host on search success |
+| `selectIsOffsetLimitNotificationVisible$()` *(new in 2026.10.1)* | `Observable<boolean>` | Whether the host shows the "offset limit" notice (requested page beyond the backend's max offset) — read-only |
+| `selectResearchMode$()` *(new in 2026.10.1)* | `Observable<boolean>` | "Research mode" tab of the resource-type bar selected — read counterpart to `setResearchMode()` |
+| `selectDisplayRA$()` *(new in 2026.10.1)* | `Observable<boolean>` | Whether the embedded Research Assistant is offered for this result set (`SearchData.displayRA`) — read-only |
+| `selectNlsSearchObject$()` *(new in 2026.10.1)* | `Observable<NlsSearchObject \| null>` | Natural-language interpretation of the query (`SearchData.nlsSearchObject`) — read-only |
 
 #### Signals
 | Method | Returns | Initial value |
@@ -910,6 +918,10 @@ instance, so the per-service references below apply verbatim:
 | `filterFacetsSignal()` *(new in 2026.8.1)* | `Signal<Facet[] \| null>` | `null` |
 | `filterStatusSignal()` *(new in 2026.8.1)* | `Signal<LoadingStatus>` | `'pending'` |
 | `lastViewedOffsetSignal()` *(new in 2026.9.1)* | `Signal<number \| null>` | `null` |
+| `isOffsetLimitNotificationVisibleSignal()` *(new in 2026.10.1)* | `Signal<boolean>` | `false` |
+| `researchModeSignal()` *(new in 2026.10.1)* | `Signal<boolean>` | `false` |
+| `displayRASignal()` *(new in 2026.10.1)* | `Signal<boolean>` | `false` |
+| `nlsSearchObjectSignal()` *(new in 2026.10.1)* | `Signal<NlsSearchObject \| null>` | `null` |
 
 #### Snapshots
 | Method | Returns |
@@ -938,9 +950,13 @@ instance, so the per-service references below apply verbatim:
 | `getFilterFacets()` *(new in 2026.8.1)* | `Promise<Facet[] \| null>` |
 | `getFilterStatus()` *(new in 2026.8.1)* | `Promise<LoadingStatus>` |
 | `getLastViewedOffset()` *(new in 2026.9.1)* | `Promise<number \| null>` |
+| `isOffsetLimitNotificationVisible()` *(new in 2026.10.1)* | `Promise<boolean>` |
+| `isResearchMode()` *(new in 2026.10.1)* | `Promise<boolean>` |
+| `isDisplayRA()` *(new in 2026.10.1)* | `Promise<boolean>` |
+| `getNlsSearchObject()` *(new in 2026.10.1)* | `Promise<NlsSearchObject \| null>` |
 
 #### Dispatch helpers
-`search(params, type?)` · `clearSearch()` · `setPageLimit(n)` · `setPageNumber(n)` · `setSortBy(s)` · `setIsSavedSearch(b)` · `setSearchNotificationMessage(s)` · `setPresentNotification(b)` *(new in 2026.8.1)* · `saveCurrentSearchTerm(s)` · `addLastSearchTerm(s)` · `setFullDisplayRecordYouCameFrom(s)` · `setDisplaySummary(b)` · `setIsSnackBarOpen(b)` · `setIsReportAProblemOpen(b)` · `setIsResourceRecommenderExpanded(b)` · `toggleExpandMyResults(b)` · `toggleSearchInFullText(b)` · `setExpandMyResultsValue(b)` *(new in 2026.8.1)* · `setSearchInFullTextValue(b)` *(new in 2026.8.1)* · `dispatch(action)`
+`search(params, type?)` · `clearSearch()` · `setPageLimit(n)` · `setPageNumber(n)` · `setSortBy(s)` · `setIsSavedSearch(b)` · `setSearchNotificationMessage(s)` · `setPresentNotification(b)` *(new in 2026.8.1)* · `saveCurrentSearchTerm(s)` · `addLastSearchTerm(s)` · `setFullDisplayRecordYouCameFrom(s)` · `setDisplaySummary(b)` · `setIsSnackBarOpen(b)` · `setIsReportAProblemOpen(b)` · `setIsResourceRecommenderExpanded(b)` · `toggleExpandMyResults(b)` · `toggleSearchInFullText(b)` · `setExpandMyResultsValue(b)` *(new in 2026.8.1)* · `setSearchInFullTextValue(b)` *(new in 2026.8.1)* · `setResearchMode(b)` *(new in 2026.10.1)* · `dispatch(action)`
 
 > **`toggle…` vs `set…Value`.** `toggleExpandMyResults(b)` / `toggleSearchInFullText(b)`
 > dispatch the *pressed* actions — the host effect runs a fresh search. The new
@@ -1243,6 +1259,9 @@ Parsed claims from the Primo JWT.
 | `user` | `string` | Raw user field from JWT |
 | `selfRegistered` | `boolean` | Whether the user registered themselves *(new in 2026.4.1)* |
 | `restrictedUser` | `boolean` | Whether the user is in a restricted group *(new in 2026.4.1)* |
+| `authenticationSystem` | `string?` | Authentication system of the session (`SAML`, `CAS`, `SOCIAL_VIA_ALMA`, `DEFAULT_EXT`, …) *(new in 2026.10.1)* |
+
+> `authenticationSystem` is required in the host's declaration but optional here, so remotes that build a `DecodedJwt` literal for `setDecodedJwt()` keep compiling.
 
 #### `UserSettings`
 
@@ -1328,6 +1347,7 @@ Parameters sent to the host search engine. `q` and `scope` are required; all oth
 | `authorityQuery` | `string?` | Authority query string *(new in 2026.4.1)* |
 | `originatingSystem` | `string?` | Originating system identifier *(new in 2026.4.1)* |
 | `originatingSystemId` | `string?` | Originating system record ID *(new in 2026.4.1)* |
+| `classify` | `boolean?` | Asks the backend to classify the query as natural language; set by the host search bar on user-submitted queries *(new in 2026.10.1)* |
 
 > **Removed in 2026.8.1: `searchTerm?: string`.** This field was added package-side
 > in 2026.3.1 but has never existed on the host's `SearchParams` — the host ignored
@@ -1364,6 +1384,21 @@ type SearchParamsWithStrParams = Omit<SearchParams, 'qInclude' | 'qExclude' | 'm
 | `did_u_mean` | `string?` | Spelling suggestion |
 | `expandedSearchAfterZeroResults` | `boolean?` | Search was expanded due to zero results |
 | `featuredResultJson` | `FeaturedResultsData?` | Featured-results bar payload; present only when the scope has one configured *(new in 2026.8.1)* |
+| `nlsSearchObject` | `NlsSearchObject?` | Natural-language interpretation of the query; present only when the backend classified it as NL *(new in 2026.10.1)* |
+| `displayRA` | `boolean?` | Whether the embedded Research Assistant is offered for this result set *(new in 2026.10.1)* |
+
+#### `NlsSearchObject` *(new in 2026.10.1)*
+
+Server-produced interpretation of a natural-language query. Read it via `SearchStateService.selectNlsSearchObject$()` / `nlsSearchObjectSignal()` / `getNlsSearchObject()`.
+
+| Field | Type | Description |
+|---|---|---|
+| `originalUserQuery` | `string` | The query exactly as the user typed it |
+| `booleanQuery` | `string` | Boolean rewrite of the query |
+| `primoQuery` | `string` | Primo `q` string the search actually ran with |
+| `qInclude` | `string[]` | Include facets derived from the query |
+| `qExclude` | `string[]` | Exclude facets derived from the query |
+| `multiFacets` | `string[]` | Multi-select facets derived from the query |
 
 #### `Info`
 
@@ -1886,6 +1921,7 @@ URL query parameters for the full-display route.
 | `lang` | `string?` |
 | `newspapersSearch` | `boolean?` |
 | `authfulldisplay` | `boolean?` *(new in 2026.4.1)* |
+| `hideTopNavigation` | `boolean?` *(new in 2026.10.1)* |
 
 ##### `FullDisplayParams`
 
@@ -2114,9 +2150,15 @@ type SearchMetaData = Omit<SearchData, 'docs'>;
 Constant exported from `search.model.ts`:
 
 ```typescript
+/** @deprecated since 2026.10.1 */
 const SUPPORTED_ELECTRONIC_TYPES_FOR_DIGITAL_VIEWER =
   ['jpg', 'tif', 'tiff', 'gif', 'png', 'pdf', 'jp2', 'jpeg'];
 ```
+
+> **Deprecated in 2026.10.1.** The host no longer defines or uses this constant
+> (it disappeared in the October 2026 NDE extract), so it no longer reflects which
+> formats the host's digital viewer accepts. It is still exported so existing imports
+> compile, and will be removed in a future release.
 
 ---
 
@@ -2270,6 +2312,14 @@ Fields added in 2026.8.1:
 | `open_locations_filterBy_by_default` | `boolean` | |
 | `calendar_week_start` | `number` | First day of week for booking/date pickers (`0` = Sunday) |
 | `hide_update_login_credentials_external_users` | `boolean` | |
+
+Field added in 2026.10.1:
+
+| Field | Type | Notes |
+|---|---|---|
+| `enable_embedded_research_assistant` | `boolean` | Enables the Research Assistant embedded in the results page |
+
+`ViewOrgLevel` also gained `'network-zone-id'?: number` in 2026.10.1, alongside the existing `'network-zone-code'`.
 
 #### `MappingTables`
 
@@ -2563,7 +2613,7 @@ Defined in `src/models/analytics.model.ts`. Const maps for consistent analytics 
 
 #### `EventsNames`
 
-Const object mapping 61 event names (added in 2026.5.1: `TOPIC_OVERVIEW`, `LEGANTO_COURSE_INFO`, `EXPORT_ALL`; added in 2026.6.1: `MORE_FROM_THE_SAME`; added in 2026.8.1: `BLOCKS_PAGE_ACTIONS`, `FEATURED_RESULTS_BAR`, `RESULTS_PER_PAGE_CHANGED`).
+Const object mapping 62 event names (added in 2026.5.1: `TOPIC_OVERVIEW`, `LEGANTO_COURSE_INFO`, `EXPORT_ALL`; added in 2026.6.1: `MORE_FROM_THE_SAME`; added in 2026.8.1: `BLOCKS_PAGE_ACTIONS`, `FEATURED_RESULTS_BAR`, `RESULTS_PER_PAGE_CHANGED`; added in 2026.10.1: `TAGS_ACTIONS`).
 
 Member names are `SCREAMING_SNAKE_CASE`; the *values* are the human-readable
 strings the host sends to analytics (`EventsNames.SEARCH === 'Search'`):
@@ -2596,7 +2646,7 @@ import { searchAction, loadFiltersAction, setDecodedJwt } from '@libis/primo-sha
 
 | Creator | Action type | Props |
 |---|---|---|
-| `searchAction` | `[Search] Load search` | `{ searchParams: SearchParams; searchType?: string }` |
+| `searchAction` | `[Search] Load search` | `{ searchParams: SearchParams; searchType?: string }` ³ |
 | `searchSuccessAction` | `[Search] Load search success` | `{ searchResultsData: SearchData }` |
 | `searchFailedAction` | `[Search] Load search failed` | — |
 | `clearSearchAction` | `[Search] clear search` | — |
@@ -2611,6 +2661,8 @@ import { searchAction, loadFiltersAction, setDecodedJwt } from '@libis/primo-sha
 
 ¹ Note: action type string uses lowercase `[search]`, not `[Search]` — match exactly when using `ofType`.
 
+³ Since 2026.10.1 the host's `searchAction` also accepts `isOffsetLimitNotificationVisible?: boolean`. The package deliberately does not mirror it: only the host sets it (when restoring a last-viewed offset), and a remote-initiated search that omits it is what makes the host clear a stale offset-limit notice.
+
 ### Search UI actions
 
 | Creator | Action type | Props |
@@ -2624,6 +2676,7 @@ import { searchAction, loadFiltersAction, setDecodedJwt } from '@libis/primo-sha
 | `searchInFullTextToggleChanged` | `[Filter Side Bar] Search In Full Text toggle pressed` | `{ searchInFullTextToggleValue: boolean }` |
 | `changeSearchInFullTextToggleValue` | `[Filter Side Bar] Search In Full Text value changed` | `{ searchInFullTextToggleValue: boolean }` |
 | `setIsResourceRecommenderExpandedAction` *(new in 2026.4.1)* | `[search] Set Is Resource Recommender Expanded ` ¹² | `{ isResourceRecommenderExpanded: boolean }` |
+| `updateResearchModeSelectedAction` *(new in 2026.10.1)* | `[Search] Update ResearchMode tab selected` | `{ mode: boolean }` |
 
 ¹ Lowercase `[search]` in type string.
 ² Trailing space in type string — must match exactly.
@@ -2697,7 +2750,7 @@ This package uses `YYYY.M.regenerateCount` versioning (e.g. `2026.4.1`):
 # After regenerating, build and pack:
 npm run build
 npm pack
-# → libis-primo-shared-state-2026.9.1.tgz
+# → libis-primo-shared-state-2026.10.1.tgz
 ```
 
 ### Cutting a release

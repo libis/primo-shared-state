@@ -11,7 +11,13 @@ export interface DecodedJwt {
   authenticationProfile: string,
   user: string,
   selfRegistered: boolean,
-  restrictedUser: boolean
+  restrictedUser: boolean,
+  /**
+   * Authentication system the session was established with (e.g. `SAML`, `CAS`,
+   * `SOCIAL_VIA_ALMA`, `DEFAULT_EXT`). Required in the host's declaration; optional here so
+   * remotes that build a `DecodedJwt` literal for `setDecodedJwt` keep compiling.
+   */
+  authenticationSystem?: string
 }
 
 /**

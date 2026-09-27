@@ -84,6 +84,26 @@
  * - getSearchAnalyticsPayloadAction, sendDisplayFullRecordAnalytics — analytics
  *   side-effects (covered by the "Analytics send* actions" rule above)
  *
+ * NEWLY NAMED EXCLUSIONS IN 2026.9.2 (all verified against the October extract):
+ * - showOffsetLimitNotification / hideOffsetLimitNotification — reducer-only, but the
+ *   flag mirrors a server-side condition (backend max-offset exceeded) and is
+ *   reconciled by host effects on every searchAction; a remote write would desync
+ *   the notice from the actual result page
+ * - searchCanceledAction — dispatched by the host search service after a
+ *   limit-offset error; marker for a host-owned request lifecycle
+ * - loadTagsAction / searchTagsAction — effects loadTags$ / searchTags$ fire HTTP
+ * - loadTagsSuccessAction / searchTagsSuccessAction / loadTagsFailureAction /
+ *   searchTagsFailureAction / clearTagsSearchAction — terminal steps of the host's
+ *   tags lookups; success payloads are server-authoritative
+ * - searchAction's new optional `isOffsetLimitNotificationVisible` prop is
+ *   deliberately NOT mirrored below: only the host sets it (when restoring a
+ *   last-viewed offset). A remote-initiated search omits it, which is exactly
+ *   what makes the host clear any stale offset-limit notice.
+ *
+ * 2026.9.2: one action added — updateResearchModeSelectedAction — bringing the
+ * exported set to 49. The other 48 type strings were re-verified byte-for-byte
+ * against the October extract.
+ *
  * 2026.9.1: no actions added or removed — the exported set is unchanged at 48.
  * All 48 exported type strings were re-verified byte-for-byte against the
  * September extract. The September extract adds a barcode-search action group
@@ -206,6 +226,17 @@ export const setPresentNotificationAction = createAction(
 export const setIsResourceRecommenderExpandedAction = createAction(
   '[search] Set Is Resource Recommender Expanded ',
   props<{ isResourceRecommenderExpanded: boolean }>()
+);
+
+/**
+ * SAFE: Pure UI-state write — selects (`true`) or deselects (`false`) the "Research mode"
+ * tab of the resource-type bar. Reducer-only; no host effect listens. The host itself
+ * resets it to `false` when a resource-type filter is selected.
+ * NOTE: uppercase [Search] and the literal `ResearchMode` spelling in the type string.
+ */
+export const updateResearchModeSelectedAction = createAction(
+  '[Search] Update ResearchMode tab selected',
+  props<{ mode: boolean }>()
 );
 
 // ─────────────────────────────────────────────────────────────────────────────

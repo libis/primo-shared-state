@@ -21,7 +21,7 @@
  * service targets it — its payload type is already public via
  * `SearchData.featuredResultJson`.
  *
- * The remaining 24 slices are declared as opaque
+ * The remaining 25 slices are declared as opaque
  * `Record<string, unknown>` aliases. This keeps `AppState` complete (so
  * consumers who write their own selectors against an unused slice still
  * type-check at the slice-access level), without forcing this package to
@@ -43,7 +43,7 @@
  * `natural-language-search`, `newspaper-search`, `ngrs-general`,
  * `ngrs-record-data`, `research-assistant`, `citation-trails`), and lowercase
  * (`account`, `atoz`, `categories`, `citations`, `favorites`, `filters`,
- * `frbr`, `language`, `resourceRecommender`, `router`, `user`).
+ * `frbr`, `language`, `resourceRecommender`, `router`, `tags`, `user`).
  * Selectors must match the exact runtime key or they return `undefined`.
  */
 
@@ -100,6 +100,19 @@ export interface SearchState extends EntityState<Doc> {
    * remotes — no exported action writes it.
    */
   lastViewedOffset?: number;
+  /**
+   * Whether the host is showing the "offset limit" notice (the requested
+   * result page is beyond the backend's maximum offset). Set by the host when
+   * the search service hits the limit or restores a last-viewed offset;
+   * reconciled on every `searchAction`. Read-only for remotes.
+   */
+  isOffsetLimitNotificationVisible: boolean;
+  /**
+   * Whether the "Research mode" tab of the resource-type bar is selected.
+   * Writable via `updateResearchModeSelectedAction`; the host resets it to
+   * `false` whenever a resource-type filter is selected.
+   */
+  researchMode: boolean;
 }
 
 export interface ViewConfigState {
@@ -218,6 +231,7 @@ export type ResearchAssistantState = Record<string, unknown>;
 export type ResourceRecommenderState = Record<string, unknown>;
 export type RouterStateReducer = Record<string, unknown>;
 export type RouterReducerState = Record<string, unknown>;
+export type TagsState = Record<string, unknown>;
 
 /* ── Root store ─────────────────────────────────────────────────────────── */
 
@@ -251,6 +265,7 @@ export interface AppState {
   router: RouterReducerState;
   routerState: RouterStateReducer;
   Search: SearchState;
+  tags: TagsState;
   user: UserState;
   viewConfig: ViewConfigState;
 }

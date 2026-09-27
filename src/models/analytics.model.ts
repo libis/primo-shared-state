@@ -69,6 +69,7 @@ export const EventsNames = {
   BLOCKS_PAGE_ACTIONS: 'Blocks Page Actions',
   FEATURED_RESULTS_BAR: 'Featured Results Bar',
   RESULTS_PER_PAGE_CHANGED: 'Results Per Page Changed',
+  TAGS_ACTIONS: 'Tags Actions',
 } as const;
 
 export const PageNames: IgnoreMapSimpleString = {
