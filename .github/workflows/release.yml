@@ -31,7 +31,7 @@ jobs:
     outputs:
       version: ${{ steps.tag.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check tag format
         id: tag
@@ -75,11 +75,11 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Node 20 went end-of-life and GitHub deprecated it on the runners. 22 is
       # the current LTS and is what the 2026.9.1 tarball was verified against.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -133,7 +133,7 @@ jobs:
           echo "Tarball contents look correct:"
           tar tzf "$tarball" | head -20
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: package-tarball
           path: ${{ steps.pack.outputs.tarball }}
@@ -147,9 +147,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: package-tarball
 
