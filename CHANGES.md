@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026.10.2 — 2026-10-05
+
+**October 2026 production release.** It promotes the 2026.10.1 prerelease after the production host upgrade. The package was re-checked against a fresh extract of the upgraded host, taken on 2026-10-05 (`main.3b86c5b9b6835dff` / `src_bootstrap_ts.2ddf78233771ee99`).
+
+The production host is **byte-identical** to the build 2026.10.1 was generated from. The webpack content hashes are the same, and a recursive diff of both the decompiled tree and the raw `www` bundle against the September 27 prerelease extract shows no differences. As a result, the state index (32 `AppState` keys, 31 feature reducers plus `router`) is unchanged.
+
+### Added
+
+- Nothing. The API surface is identical to 2026.10.1.
+
+### Changed
+
+- Nothing in `src/`. The exported action set (49), the seven state services, every model, and `store.model.ts` are carried over unchanged.
+
+### ⚠️ Breaking removals
+
+- None.
+
+### API symmetry
+
+- No changes to `src/state/`. The 90 selector groups audited in 2026.10.1 still expose the full Observable / Signal / Promise triple.
+
+### Documentation
+
+- **README.md**: pack/install version strings bumped to `2026.10.2`. The *(new in 2026.10.1)* annotations are kept, because that is where those APIs first appeared.
+
 ## 2026.10.1 — 2026-09-27
 
 **October 2026 prerelease**, cut ahead of the release month from the October NDE extract (`src_bootstrap_ts.2ddf78233771ee99`), indexed with `npm run index-state` (35 slice directories scanned; 31 register a reducer in `StoreModule.forRoot`, plus `router` from `@ngrx/router-store` — 32 `AppState` keys).

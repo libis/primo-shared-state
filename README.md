@@ -90,7 +90,7 @@ npm run build
 
 # 3. Create a distributable tarball
 npm pack
-# → libis-primo-shared-state-2026.10.1.tgz
+# → libis-primo-shared-state-2026.10.2.tgz
 ```
 
 ---
@@ -101,14 +101,14 @@ npm pack
 
 ```bash
 npm pack
-cp libis-primo-shared-state-2026.10.1.tgz path/to/NDE_customModule/nde/
+cp libis-primo-shared-state-2026.10.2.tgz path/to/NDE_customModule/nde/
 ```
 
 ### Step 2 — add the `file:` dependency to the remote's `package.json`
 
 ```json
 "dependencies": {
-  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.10.1.tgz"
+  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.10.2.tgz"
 }
 ```
 
@@ -2750,7 +2750,7 @@ This package uses `YYYY.M.regenerateCount` versioning (e.g. `2026.4.1`):
 # After regenerating, build and pack:
 npm run build
 npm pack
-# → libis-primo-shared-state-2026.10.1.tgz
+# → libis-primo-shared-state-2026.10.2.tgz
 ```
 
 ### Cutting a release
