@@ -66,7 +66,7 @@ export class PrimoStateService {
     readonly config: ViewConfigStateService,
     /** Linked-data entity, wiki data, related docs/entities (read-only). */
     readonly entity: EntityStateService,
-    /** Account counters, loans, requests, fines, search history (read-only). */
+    /** Account counters, loans, requests, deposits, fines, search history (read-only). */
     readonly account: AccountStateService,
   ) {}
 }

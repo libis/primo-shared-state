@@ -1009,6 +1009,7 @@ import {
   FilterStateService,
   SearchStateService,
   FilterGroupValue,
+  FilterType,
 } from '@libis/primo-shared-state';
 
 @Component({
@@ -1066,6 +1067,8 @@ export class CustomFiltersComponent {
     const filters: FilterGroupValue[] = [
       { filterGroup: 'creator', filterValue: 'Smith, John' },
       { filterGroup: 'creator', filterValue: 'Doe, Jane' },
+      // Since 2026.11.1 a multi-select value can be an exclude; omit filterType for include.
+      { filterGroup: 'lang', filterValue: 'ger', filterType: FilterType.Exclude },
     ];
     this.filter.applyMultiSelectFilters(filters);
   }
@@ -1310,5 +1313,59 @@ export class NlsBannerComponent {
   offsetLimitHit = this.primo.search.isOffsetLimitNotificationVisibleSignal();
 
   offerResearchMode = computed(() => this.displayRA() && !this.researchMode());
+}
+```
+
+## Research Assistant Suggestion and Account Deposits (new in 2026.11.1)
+
+The November host shows an inline "try the Research Assistant" suggestion on
+the results page. `showResearchAssistantSuggestionSignal()` mirrors the host's
+derived selector: the suggestion flag AND `displayRA` AND NOT research mode.
+`setShowResearchAssistantSuggestion(false)` dismisses it as a pure UI write. The
+host shows it again on the next search with a different query.
+
+The account slice also gained a "My Deposits" section. Like the rest of
+`primo.account`, it is read-only. Note that `depositsStatus` is the host's
+upper-case string (`'PENDING'`, `'LOADING'`, `'SUCCESS'`, `'FAILURE'`), not a
+`LoadingStatus`.
+
+```typescript
+import { Component, computed, inject } from '@angular/core';
+import { MappedDepositItem, PrimoStateService } from '@libis/primo-shared-state';
+
+@Component({
+  selector: 'app-ra-hint-and-deposits',
+  template: `
+    @if (showRaHint()) {
+      <p>
+        Try the Research Assistant for this question.
+        <button (click)="primo.search.setShowResearchAssistantSuggestion(false)">Dismiss</button>
+      </p>
+    }
+
+    @if (depositsLoaded()) {
+      <h3>My deposits ({{ depositsCount() ?? 0 }})</h3>
+      <ul>
+        @for (d of deposits(); track d.depositId) {
+          <li [class]="d.statusColor">{{ d.title }} — {{ d.statusLabel }}</li>
+        }
+      </ul>
+    }
+  `,
+})
+export class RaHintAndDepositsComponent {
+  protected primo = inject(PrimoStateService);
+
+  showRaHint = this.primo.search.showResearchAssistantSuggestionSignal();
+
+  deposits = this.primo.account.depositsListSignal();
+  depositsCount = this.primo.account.depositsCounterSignal();
+  private depositsStatus = this.primo.account.depositsStatusSignal();
+  depositsLoaded = computed(() => this.depositsStatus() === 'SUCCESS');
+
+  async drafts(): Promise<MappedDepositItem[]> {
+    const all = await this.primo.account.getDepositsList();
+    return all.filter(d => d.statusColor === 'grey');
+  }
 }
 ```

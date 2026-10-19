@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import {
   BlockMessage,
   LoanItem,
+  MappedDepositItem,
   MappedRequestItem,
   MappedFineItem,
   MappedInstItem,
@@ -105,6 +106,33 @@ export class AccountStateService {
     return this.helper.select$((state: AppState) => state.account?.finesStatus);
   }
 
+  /** Number of research deposits. Set by the host's counters load and again when the deposits list loads. */
+  selectDepositsCounter$(): Observable<number | undefined> {
+    return this.helper.select$((state: AppState) => state.account?.depositsCounter);
+  }
+
+  /** Mapped deposits for the "My Deposits" account section. Empty until the host has fetched them. */
+  selectDepositsList$(): Observable<MappedDepositItem[]> {
+    return this.helper.select$((state: AppState) => state.account?.depositsList ?? []);
+  }
+
+  /** Upper-case host status string: `"PENDING"`, `"LOADING"`, `"SUCCESS"` or `"FAILURE"`. */
+  selectDepositsStatus$(): Observable<string | undefined> {
+    return this.helper.select$((state: AppState) => state.account?.depositsStatus);
+  }
+
+  selectDepositsOffset$(): Observable<number | undefined> {
+    return this.helper.select$((state: AppState) => state.account?.depositsOffset);
+  }
+
+  selectDepositsBulk$(): Observable<number | undefined> {
+    return this.helper.select$((state: AppState) => state.account?.depositsBulk);
+  }
+
+  selectDepositsListCounter$(): Observable<number | undefined> {
+    return this.helper.select$((state: AppState) => state.account?.depositsListCounter);
+  }
+
   // ── Promise API (snapshots) ───────────────────────────────────────────────
 
   async getLoansCounter(): Promise<number | undefined> {
@@ -175,6 +203,30 @@ export class AccountStateService {
     return this.helper.selectOnce((state: AppState) => state.account?.finesStatus);
   }
 
+  async getDepositsCounter(): Promise<number | undefined> {
+    return this.helper.selectOnce((state: AppState) => state.account?.depositsCounter);
+  }
+
+  async getDepositsList(): Promise<MappedDepositItem[]> {
+    return this.helper.selectOnce((state: AppState) => state.account?.depositsList ?? []);
+  }
+
+  async getDepositsStatus(): Promise<string | undefined> {
+    return this.helper.selectOnce((state: AppState) => state.account?.depositsStatus);
+  }
+
+  async getDepositsOffset(): Promise<number | undefined> {
+    return this.helper.selectOnce((state: AppState) => state.account?.depositsOffset);
+  }
+
+  async getDepositsBulk(): Promise<number | undefined> {
+    return this.helper.selectOnce((state: AppState) => state.account?.depositsBulk);
+  }
+
+  async getDepositsListCounter(): Promise<number | undefined> {
+    return this.helper.selectOnce((state: AppState) => state.account?.depositsListCounter);
+  }
+
   // ── Signal API ────────────────────────────────────────────────────────────
 
   loansCounterSignal(): Signal<number | undefined> {
@@ -243,5 +295,29 @@ export class AccountStateService {
 
   finesStatusSignal(): Signal<LoadingStatus | undefined> {
     return this.helper.selectSignal((state: AppState) => state.account?.finesStatus, undefined);
+  }
+
+  depositsCounterSignal(): Signal<number | undefined> {
+    return this.helper.selectSignal((state: AppState) => state.account?.depositsCounter, undefined);
+  }
+
+  depositsListSignal(): Signal<MappedDepositItem[]> {
+    return this.helper.selectSignal((state: AppState) => state.account?.depositsList ?? [], [] as MappedDepositItem[]);
+  }
+
+  depositsStatusSignal(): Signal<string | undefined> {
+    return this.helper.selectSignal((state: AppState) => state.account?.depositsStatus, undefined);
+  }
+
+  depositsOffsetSignal(): Signal<number | undefined> {
+    return this.helper.selectSignal((state: AppState) => state.account?.depositsOffset, undefined);
+  }
+
+  depositsBulkSignal(): Signal<number | undefined> {
+    return this.helper.selectSignal((state: AppState) => state.account?.depositsBulk, undefined);
+  }
+
+  depositsListCounterSignal(): Signal<number | undefined> {
+    return this.helper.selectSignal((state: AppState) => state.account?.depositsListCounter, undefined);
   }
 }

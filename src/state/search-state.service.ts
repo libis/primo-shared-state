@@ -26,6 +26,7 @@ import {
   changePcAvailabilityToggleValue,
   changeSearchInFullTextToggleValue,
   updateResearchModeSelectedAction,
+  toggleShowResearchAssistantSuggestionAction,
 } from '../actions/shared-actions';
 
 /**
@@ -201,6 +202,16 @@ export class SearchStateService {
     return this.helper.select$((state: AppState) => state.Search?.searchResultsMetaData?.displayRA ?? false);
   }
 
+  /**
+   * Whether the host currently shows the inline "try the Research Assistant"
+   * suggestion. Mirrors the host's derived `selectShowResearchAssistantSuggestion`:
+   * the `showResearchAssistantSuggestion` flag AND `displayRA` AND NOT research mode.
+   * Counterpart read for {@link setShowResearchAssistantSuggestion}.
+   */
+  selectShowResearchAssistantSuggestion$(): Observable<boolean> {
+    return this.helper.select$((state: AppState) => !!state.Search?.showResearchAssistantSuggestion && !!state.Search?.searchResultsMetaData?.displayRA && !state.Search?.researchMode);
+  }
+
   /** Natural-language interpretation of the current query, if the backend classified it as one. Read-only. */
   selectNlsSearchObject$(): Observable<NlsSearchObject | null> {
     return this.helper.select$((state: AppState) => state.Search?.searchResultsMetaData?.nlsSearchObject ?? null);
@@ -325,6 +336,10 @@ export class SearchStateService {
 
   async isDisplayRA(): Promise<boolean> {
     return this.helper.selectOnce((state: AppState) => state.Search?.searchResultsMetaData?.displayRA ?? false);
+  }
+
+  async isShowResearchAssistantSuggestion(): Promise<boolean> {
+    return this.helper.selectOnce((state: AppState) => !!state.Search?.showResearchAssistantSuggestion && !!state.Search?.searchResultsMetaData?.displayRA && !state.Search?.researchMode);
   }
 
   async getNlsSearchObject(): Promise<NlsSearchObject | null> {
@@ -453,6 +468,10 @@ export class SearchStateService {
     return this.helper.selectSignal((state: AppState) => state.Search?.searchResultsMetaData?.displayRA ?? false, false);
   }
 
+  showResearchAssistantSuggestionSignal(): Signal<boolean> {
+    return this.helper.selectSignal((state: AppState) => !!state.Search?.showResearchAssistantSuggestion && !!state.Search?.searchResultsMetaData?.displayRA && !state.Search?.researchMode, false);
+  }
+
   nlsSearchObjectSignal(): Signal<NlsSearchObject | null> {
     return this.helper.selectSignal((state: AppState) => state.Search?.searchResultsMetaData?.nlsSearchObject ?? null, null);
   }
@@ -552,5 +571,14 @@ export class SearchStateService {
    */
   setResearchMode(mode: boolean): void {
     this.helper.dispatch(updateResearchModeSelectedAction({ mode }));
+  }
+
+  /**
+   * Shows (`true`) or dismisses (`false`) the inline Research Assistant
+   * suggestion. Pure UI write. The host re-arms it to `true` on the next
+   * search with a different query.
+   */
+  setShowResearchAssistantSuggestion(mode: boolean): void {
+    this.helper.dispatch(toggleShowResearchAssistantSuggestionAction({ mode }));
   }
 }

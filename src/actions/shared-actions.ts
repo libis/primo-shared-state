@@ -100,6 +100,36 @@
  *   last-viewed offset). A remote-initiated search omits it, which is exactly
  *   what makes the host clear any stale offset-limit notice.
  *
+ * REMOVED IN 2026.11.1 (confirmed by the user):
+ * - loadUserSettingsSuccessAction — the November host adds the full-display effect
+ *   reloadFullDisplayOnLoginOrLanguageChange$, which listens to it and, on a
+ *   full-display or openurl route, dispatches reloadFullDisplayState /
+ *   loadServicePageDataAction: the record's Search / Delivery / full-display state is
+ *   cleared and re-fetched over HTTP. A success action that feeds an HTTP effect is
+ *   not remote-safe. (It already fed user.effects' preferred-language sync.)
+ *
+ * NEWLY NAMED EXCLUSIONS IN 2026.11.1 (all verified against the November extract):
+ * - startGetAccountDepositsList — effect fires the ILS `deposits` HTTP request
+ *   (covered by the "[Account] Start *" rule; its type prefix is [Deposits])
+ * - doneGetAccountDepositsList / doneSortDepositsPage — server-authoritative
+ *   MappedDepositItem payloads
+ * - sortDepositAction / startSortDepositsPage — host-internal sort chain that re-emits
+ *   a full deposits list into the store
+ * - updateDepositsStatus / updateDepositsOffset / resetDepositsList — reducer-only, but
+ *   they write host-owned paging/status for an ILS-backed list; consistent with the
+ *   other account sections, none of whose status/offset writers is exported
+ * - [CDL] actions (viewCdlRepStartAction, cdlReturnEarlyAction,
+ *   cdlRegisterToWaitListAction) — effects call CDL HTTP endpoints;
+ *   viewCdlResourceAction / cdlWaitlistAction / cdlRegisterToWaitListDoneAction /
+ *   cdlEndSession / cdlUpdateTimerMode — write server-authoritative CDL session
+ *   state into Delivery entities
+ * - reloadFullDisplayState / setFullDisplayLoadedLanguage — host-internal full-display
+ *   reload orchestration
+ *
+ * 2026.11.1: one action added — toggleShowResearchAssistantSuggestionAction — and one
+ * removed — loadUserSettingsSuccessAction — keeping the exported set at 49. The other
+ * 48 type strings were re-verified byte-for-byte against the November extract.
+ *
  * 2026.9.2: one action added — updateResearchModeSelectedAction — bringing the
  * exported set to 49. The other 48 type strings were re-verified byte-for-byte
  * against the October extract.
@@ -113,9 +143,9 @@
 
 import { createAction, props } from '@ngrx/store';
 import { Facet, SearchData, SearchParams } from '../models/search.model';
-import { DecodedJwt, UserSettings } from '../models/user.model';
+import { DecodedJwt } from '../models/user.model';
 import { LogoutReason } from '../models/state.const';
-import { ResourceTypeFilterModel } from '../models/filter.model';
+import { FilterType, ResourceTypeFilterModel } from '../models/filter.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Search actions
@@ -239,6 +269,18 @@ export const updateResearchModeSelectedAction = createAction(
   props<{ mode: boolean }>()
 );
 
+/**
+ * SAFE: Pure UI-state write — shows (`true`) or dismisses (`false`) the inline
+ * "try the Research Assistant" suggestion on the results page. Reducer-only; no host
+ * effect listens. The host itself re-arms it to `true` on the next `searchAction`
+ * whose `q` differs from the previous search.
+ * (Host name: `toggleShowResearchAssistantSuggestion`.)
+ */
+export const toggleShowResearchAssistantSuggestionAction = createAction(
+  '[Search] Update show Research Assistant Suggestion toggle',
+  props<{ mode: boolean }>()
+);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Filter / search-filter actions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -284,7 +326,8 @@ export const removeExcludeFilterAction = createAction(
 
 /**
  * SAFE: Command to apply multi-select filters.
- * FilterGroupValue shape: { filterGroup: string; filterValue: string }.
+ * FilterGroupValue shape: { filterGroup: string; filterValue: string; filterType?: FilterType }.
+ * Omitting `filterType` applies the value as an include, as before 2026.11.1.
  */
 export const applyMultiSelectFiltersAction = createAction(
   '[Filter Side Bar] Apply Multi-select Filters',
@@ -295,6 +338,13 @@ export const applyMultiSelectFiltersAction = createAction(
 export interface FilterGroupValue {
   filterGroup: string;
   filterValue: string;
+  /**
+   * Include or exclude this value (new in 2026.11.1). Defaults to
+   * `FilterType.Include` in the host reducer and effect, which builds
+   * `facet_<group>,exclude,<value>` multi-facets for `FilterType.Exclude` and
+   * drops the opposite-polarity entry for the same value.
+   */
+  filterType?: FilterType;
 }
 
 /**
@@ -388,16 +438,6 @@ export const setDecodedJwt = createAction(
   props<{ decodedJwt: DecodedJwt }>()
 );
 
-/**
- * SAFE (with caveat): Terminal success action whose reducer stores user settings.
- * ⚠️ NOTE: A host effect listens downstream to sync preferred language.
- * Only dispatch with legitimate user settings data.
- */
-export const loadUserSettingsSuccessAction = createAction(
-  '[User-Settings] save user settings',
-  props<{ userSettings: UserSettings; isNewSession: boolean }>()
-);
-
 /** SAFE: Terminal success action — stores the updated language preference. */
 export const doneChangeUserSettingsLanguageAction = createAction(
   '[User-Settings] Done Change User Settings Language',
@@ -437,7 +477,13 @@ export const changeRaSaveSearchDoneAction = createAction(
 /** SAFE: Pure state reset — clears the logout reason flag. */
 export const resetLogoutReason = createAction('[User-Settings] reset logout reason');
 
-/** SAFE: Command to reset the JWT and log out. Remote may legitimately trigger logout. */
+/**
+ * SAFE: Command to reset the JWT and log out. Remote may legitimately trigger logout.
+ * Since the November host (2026.11.1): when `url` is given, the host no longer
+ * dispatches its user-settings reset after logout (`startResetUserSettingsAfterLogOut$`
+ * skips it), because the page is about to leave for `url`. Without `url`, the behaviour
+ * is unchanged: settings reset, and the user is navigated to /home.
+ */
 export const resetJwtAction = createAction(
   '[User] reset jwt',
   props<{ logoutReason: LogoutReason; url?: string }>()

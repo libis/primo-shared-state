@@ -93,6 +93,11 @@ export class ViewConfigStateService {
     return this.helper.select$((state: AppState) => state.viewConfig?.config?.['primo-view']?.['attributes-map']?.interfaceLanguage);
   }
 
+  /** Whether signing out also signs the user out of the IdP (single logout). Mirrors the host's `selectEnableSingleLogout`. */
+  selectEnableSingleLogout$(): Observable<boolean | undefined> {
+    return this.helper.select$((state: AppState) => state.viewConfig?.config?.enableSingleLogout);
+  }
+
   // ── Promise API (snapshots) ───────────────────────────────────────────────
 
   async getConfig(): Promise<ViewConfigData | undefined> {
@@ -151,6 +156,10 @@ export class ViewConfigStateService {
     return this.helper.selectOnce((state: AppState) => state.viewConfig?.config?.['primo-view']?.['attributes-map']?.interfaceLanguage);
   }
 
+  async isEnableSingleLogout(): Promise<boolean | undefined> {
+    return this.helper.selectOnce((state: AppState) => state.viewConfig?.config?.enableSingleLogout);
+  }
+
   // ── Signal API ────────────────────────────────────────────────────────────
 
   statusSignal(): Signal<LoadingStatus> {
@@ -207,5 +216,9 @@ export class ViewConfigStateService {
 
   institutionNameSignal(): Signal<string | undefined> {
     return this.helper.selectSignal((state: AppState) => state.viewConfig?.config?.['primo-view']?.institution?.['institution-name'], undefined);
+  }
+
+  enableSingleLogoutSignal(): Signal<boolean | undefined> {
+    return this.helper.selectSignal((state: AppState) => state.viewConfig?.config?.enableSingleLogout, undefined);
   }
 }

@@ -90,7 +90,7 @@ npm run build
 
 # 3. Create a distributable tarball
 npm pack
-# → libis-primo-shared-state-2026.10.2.tgz
+# → libis-primo-shared-state-2026.11.1.tgz
 ```
 
 ---
@@ -101,14 +101,14 @@ npm pack
 
 ```bash
 npm pack
-cp libis-primo-shared-state-2026.10.2.tgz path/to/NDE_customModule/nde/
+cp libis-primo-shared-state-2026.11.1.tgz path/to/NDE_customModule/nde/
 ```
 
 ### Step 2 — add the `file:` dependency to the remote's `package.json`
 
 ```json
 "dependencies": {
-  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.10.2.tgz"
+  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.11.1.tgz"
 }
 ```
 
@@ -484,6 +484,7 @@ this.filter.excludeFilter('rtype', 'newspapers');
 this.filter.applyMultiSelectFilters([
   { filterGroup: 'creator', filterValue: 'Smith' },
   { filterGroup: 'creator', filterValue: 'Jones' },
+  { filterGroup: 'lang', filterValue: 'ger', filterType: FilterType.Exclude }, // exclude — FilterType is exported from '@libis/primo-shared-state' (new in 2026.11.1)
 ]);
 this.filter.clearAllFilters({ q: 'angular', scope: 'Everything' });
 this.filter.selectResourceType({ resourceType: 'books', count: 42 }, 0);
@@ -705,6 +706,7 @@ These write a simple scalar to the store. No host effect listens to them, so the
 | `updateFullDisplayRecordYouCameFromAction` | Records the full-display record the user navigated from |
 | `setIsResourceRecommenderExpandedAction` | Controls Resource Recommender panel expansion |
 | `updateResearchModeSelectedAction` | Selects/deselects the "Research mode" tab of the resource-type bar (reducer-only) |
+| `toggleShowResearchAssistantSuggestionAction` | Shows/dismisses the inline Research Assistant suggestion (reducer-only; the host re-arms it on the next search with a new query) |
 | `resourceTypeFilterSelectedAction` | Selects a resource type filter (triggers new search; requires `index` for host focus management — pass `0` if unknown) |
 
 #### ✅ Exported success/failed actions — terminal writes with no downstream effects
@@ -718,7 +720,7 @@ Some `*Success` and `*Failed` actions **are** exported. These are safe because t
 | `filtersSuccessAction` | Writes filter data to the store; the host's `updateFilterStateForNewSearch$` effect derives filter UI state from it (pure state mapping, no HTTP) |
 | `filterFailedAction` | Sets a filter error flag; no effect fires on it |
 
-> **Not all success actions are safe.** The export list is the definitive answer. For example, `deliverySuccessAction` is **not** exported because a host effect listens to it and fires a second HTTP call. See the chain below. `resetUserSettingsSuccessAction` was removed in 2026.6.1 for the same class of reason — a host effect navigates to `/home` and resets the interface language when it fires.
+> **Not all success actions are safe.** The export list is the definitive answer. For example, `deliverySuccessAction` is **not** exported because a host effect listens to it and fires a second HTTP call. See the chain below. `resetUserSettingsSuccessAction` was removed in 2026.6.1 for the same class of reason — a host effect navigates to `/home` and resets the interface language when it fires. `loadUserSettingsSuccessAction` was removed in 2026.11.1: the November host reloads the open full-display / openurl record over HTTP when it fires.
 
 #### ❌ Excluded — effect outputs that feed downstream effects
 
@@ -853,7 +855,7 @@ instance, so the per-service references below apply verbatim:
 #### Dispatch helpers
 `setDecodedJwt(jwt)` · `setLoginFromState(v)` · `resetLogoutReason()` · `setLanguage(v)` · `setSaveHistory(v)` · `setUseHistory(v)` · `setAutoExtendMySession(v)` · `setAllowSavingRaSearchHistory(v)` · `logout(reason, url?)` *(new in 2026.8.1)* · `dispatch(action)`
 
-> `logout(reason, url?)` wraps `resetJwtAction` — `reason` is `'user'` for a deliberate sign-out or `'timeout'` for a session expiry.
+> `logout(reason, url?)` wraps `resetJwtAction` — `reason` is `'user'` for a deliberate sign-out or `'timeout'` for a session expiry. Since 2026.11.1 (November host), passing `url` skips the host's post-logout user-settings reset and `/home` navigation, because the page is leaving for `url`.
 
 ---
 
@@ -890,6 +892,7 @@ instance, so the per-service references below apply verbatim:
 | `selectResearchMode$()` *(new in 2026.10.1)* | `Observable<boolean>` | "Research mode" tab of the resource-type bar selected — read counterpart to `setResearchMode()` |
 | `selectDisplayRA$()` *(new in 2026.10.1)* | `Observable<boolean>` | Whether the embedded Research Assistant is offered for this result set (`SearchData.displayRA`) — read-only |
 | `selectNlsSearchObject$()` *(new in 2026.10.1)* | `Observable<NlsSearchObject \| null>` | Natural-language interpretation of the query (`SearchData.nlsSearchObject`) — read-only |
+| `selectShowResearchAssistantSuggestion$()` *(new in 2026.11.1)* | `Observable<boolean>` | Whether the inline "try the Research Assistant" suggestion is shown (flag AND `displayRA` AND NOT research mode) — read counterpart to `setShowResearchAssistantSuggestion()` |
 
 #### Signals
 | Method | Returns | Initial value |
@@ -922,6 +925,7 @@ instance, so the per-service references below apply verbatim:
 | `researchModeSignal()` *(new in 2026.10.1)* | `Signal<boolean>` | `false` |
 | `displayRASignal()` *(new in 2026.10.1)* | `Signal<boolean>` | `false` |
 | `nlsSearchObjectSignal()` *(new in 2026.10.1)* | `Signal<NlsSearchObject \| null>` | `null` |
+| `showResearchAssistantSuggestionSignal()` *(new in 2026.11.1)* | `Signal<boolean>` | `false` |
 
 #### Snapshots
 | Method | Returns |
@@ -954,9 +958,10 @@ instance, so the per-service references below apply verbatim:
 | `isResearchMode()` *(new in 2026.10.1)* | `Promise<boolean>` |
 | `isDisplayRA()` *(new in 2026.10.1)* | `Promise<boolean>` |
 | `getNlsSearchObject()` *(new in 2026.10.1)* | `Promise<NlsSearchObject \| null>` |
+| `isShowResearchAssistantSuggestion()` *(new in 2026.11.1)* | `Promise<boolean>` |
 
 #### Dispatch helpers
-`search(params, type?)` · `clearSearch()` · `setPageLimit(n)` · `setPageNumber(n)` · `setSortBy(s)` · `setIsSavedSearch(b)` · `setSearchNotificationMessage(s)` · `setPresentNotification(b)` *(new in 2026.8.1)* · `saveCurrentSearchTerm(s)` · `addLastSearchTerm(s)` · `setFullDisplayRecordYouCameFrom(s)` · `setDisplaySummary(b)` · `setIsSnackBarOpen(b)` · `setIsReportAProblemOpen(b)` · `setIsResourceRecommenderExpanded(b)` · `toggleExpandMyResults(b)` · `toggleSearchInFullText(b)` · `setExpandMyResultsValue(b)` *(new in 2026.8.1)* · `setSearchInFullTextValue(b)` *(new in 2026.8.1)* · `setResearchMode(b)` *(new in 2026.10.1)* · `dispatch(action)`
+`search(params, type?)` · `clearSearch()` · `setPageLimit(n)` · `setPageNumber(n)` · `setSortBy(s)` · `setIsSavedSearch(b)` · `setSearchNotificationMessage(s)` · `setPresentNotification(b)` *(new in 2026.8.1)* · `saveCurrentSearchTerm(s)` · `addLastSearchTerm(s)` · `setFullDisplayRecordYouCameFrom(s)` · `setDisplaySummary(b)` · `setIsSnackBarOpen(b)` · `setIsReportAProblemOpen(b)` · `setIsResourceRecommenderExpanded(b)` · `toggleExpandMyResults(b)` · `toggleSearchInFullText(b)` · `setExpandMyResultsValue(b)` *(new in 2026.8.1)* · `setSearchInFullTextValue(b)` *(new in 2026.8.1)* · `setResearchMode(b)` *(new in 2026.10.1)* · `setShowResearchAssistantSuggestion(b)` *(new in 2026.11.1)* · `dispatch(action)`
 
 > **`toggle…` vs `set…Value`.** `toggleExpandMyResults(b)` / `toggleSearchInFullText(b)`
 > dispatch the *pressed* actions — the host effect runs a fresh search. The new
@@ -1041,6 +1046,7 @@ instance, so the per-service references below apply verbatim:
 | `selectInstitutionName$()` | `Observable<string \| undefined>` | Institution name |
 | `selectVid$()` | `Observable<string \| undefined>` | View ID |
 | `selectInterfaceLanguage$()` | `Observable<string \| undefined>` | Interface language |
+| `selectEnableSingleLogout$()` *(new in 2026.11.1)* | `Observable<boolean \| undefined>` | Whether sign-out also signs the user out of the IdP (`ViewConfigData.enableSingleLogout`) |
 
 #### Signals
 | Method | Returns | Initial value |
@@ -1059,6 +1065,7 @@ instance, so the per-service references below apply verbatim:
 | `institutionNameSignal()` | `Signal<string \| undefined>` | `undefined` |
 | `vidSignal()` | `Signal<string \| undefined>` | `undefined` |
 | `interfaceLanguageSignal()` | `Signal<string \| undefined>` | `undefined` |
+| `enableSingleLogoutSignal()` *(new in 2026.11.1)* | `Signal<boolean \| undefined>` | `undefined` |
 
 #### Snapshots
 | Method | Returns |
@@ -1077,6 +1084,7 @@ instance, so the per-service references below apply verbatim:
 | `getInstitutionName()` | `Promise<string \| undefined>` |
 | `getVid()` | `Promise<string \| undefined>` |
 | `getInterfaceLanguage()` | `Promise<string \| undefined>` |
+| `isEnableSingleLogout()` *(new in 2026.11.1)* | `Promise<boolean \| undefined>` |
 
 ---
 
@@ -1151,6 +1159,12 @@ instance, so the per-service references below apply verbatim:
 | `selectLoansStatus$()` | `Observable<LoadingStatus \| undefined>` | Loans load status |
 | `selectRequestsStatus$()` | `Observable<LoadingStatus \| undefined>` | Requests load status |
 | `selectFinesStatus$()` | `Observable<LoadingStatus \| undefined>` | Fines load status |
+| `selectDepositsCounter$()` *(new in 2026.11.1)* | `Observable<number \| undefined>` | Research deposits count |
+| `selectDepositsList$()` *(new in 2026.11.1)* | `Observable<MappedDepositItem[]>` | Mapped deposits for "My Deposits" (empty until fetched) |
+| `selectDepositsStatus$()` *(new in 2026.11.1)* | `Observable<string \| undefined>` | Deposits load status — host writes upper-case `"PENDING"` / `"LOADING"` / `"SUCCESS"` / `"FAILURE"` |
+| `selectDepositsOffset$()` *(new in 2026.11.1)* | `Observable<number \| undefined>` | Deposits paging offset |
+| `selectDepositsBulk$()` *(new in 2026.11.1)* | `Observable<number \| undefined>` | Deposits page size |
+| `selectDepositsListCounter$()` *(new in 2026.11.1)* | `Observable<number \| undefined>` | Number of deposits in the loaded list |
 
 #### Signals
 | Method | Returns | Initial value |
@@ -1172,6 +1186,12 @@ instance, so the per-service references below apply verbatim:
 | `loansStatusSignal()` | `Signal<LoadingStatus \| undefined>` | `undefined` |
 | `requestsStatusSignal()` | `Signal<LoadingStatus \| undefined>` | `undefined` |
 | `finesStatusSignal()` | `Signal<LoadingStatus \| undefined>` | `undefined` |
+| `depositsCounterSignal()` *(new in 2026.11.1)* | `Signal<number \| undefined>` | `undefined` |
+| `depositsListSignal()` *(new in 2026.11.1)* | `Signal<MappedDepositItem[]>` | `[]` |
+| `depositsStatusSignal()` *(new in 2026.11.1)* | `Signal<string \| undefined>` | `undefined` |
+| `depositsOffsetSignal()` *(new in 2026.11.1)* | `Signal<number \| undefined>` | `undefined` |
+| `depositsBulkSignal()` *(new in 2026.11.1)* | `Signal<number \| undefined>` | `undefined` |
+| `depositsListCounterSignal()` *(new in 2026.11.1)* | `Signal<number \| undefined>` | `undefined` |
 
 #### Snapshots
 | Method | Returns |
@@ -1193,6 +1213,12 @@ instance, so the per-service references below apply verbatim:
 | `getLoansStatus()` | `Promise<LoadingStatus \| undefined>` |
 | `getRequestsStatus()` | `Promise<LoadingStatus \| undefined>` |
 | `getFinesStatus()` | `Promise<LoadingStatus \| undefined>` |
+| `getDepositsCounter()` *(new in 2026.11.1)* | `Promise<number \| undefined>` |
+| `getDepositsList()` *(new in 2026.11.1)* | `Promise<MappedDepositItem[]>` |
+| `getDepositsStatus()` *(new in 2026.11.1)* | `Promise<string \| undefined>` |
+| `getDepositsOffset()` *(new in 2026.11.1)* | `Promise<number \| undefined>` |
+| `getDepositsBulk()` *(new in 2026.11.1)* | `Promise<number \| undefined>` |
+| `getDepositsListCounter()` *(new in 2026.11.1)* | `Promise<number \| undefined>` |
 
 ---
 
@@ -1715,6 +1741,19 @@ One electronic access option (full text, open access, etc.).
 | `researchLinksList` | `EsploroResearchLink[]?` *(new in 2026.4.1)* |
 | `collapse` | `boolean?` *(new in 2026.6.1)* |
 | `shouldDisplayInDigitalViewer` | `boolean?` *(new in 2026.6.1)* |
+| `ndeCdlMode` | `CdlType?` *(new in 2026.11.1)* |
+| `ndeCdlMessage` | `string?` *(new in 2026.11.1)* |
+| `ndeCdlSessionActive` | `boolean?` *(new in 2026.11.1)* |
+| `ndeCdlAvailableStatus` | `string?` *(new in 2026.11.1)* |
+| `ndeCdlRemainingTime` | `string?` *(new in 2026.11.1)* — remaining CDL loan time from the server, in seconds |
+| `triggerTimer` | `boolean?` *(new in 2026.11.1)* |
+| `timerExpiresAt` | `number?` *(new in 2026.11.1)* — epoch ms at which the active CDL session expires |
+| `showTimer` | `boolean?` *(new in 2026.11.1)* |
+| `waitingListPosition` | `string?` *(new in 2026.11.1)* |
+
+The `ndeCdl*`, timer and waiting-list fields are Controlled Digital Lending (CDL) session state. The host's Delivery reducer writes them when the patron starts, ends or waits for a CDL viewing session. They are read-only for remotes; every CDL action fires HTTP and is host-only.
+
+`CdlType` *(new in 2026.11.1)* is `'SHORT_TERM' | 'LONG_TERM' | 'NO_CDL'`, also exported as the constants `SHORT_TERM`, `LONG_TERM` and `NO_CDL`.
 
 > `supported?: boolean` was removed in 2026.6.1 — the field no longer exists on the host model.
 
@@ -2232,6 +2271,7 @@ Exported from `shared-actions.ts` for use with `applyMultiSelectFiltersAction`.
 |---|---|
 | `filterGroup` | `string` |
 | `filterValue` | `string` |
+| `filterType` | `FilterType?` — `FilterType.Exclude` applies the value as an exclude; omitted or `FilterType.Include` applies it as an include *(new in 2026.11.1)* |
 
 ---
 
@@ -2256,6 +2296,7 @@ Top-level config object. Key properties:
 | `searchWithinJournalConfig` | `SearchWithinJournal` *(new in 2026.4.1)* |
 | `is_ip_allow_to_login` | `boolean?` *(new in 2026.6.1)* |
 | `landingPageShowcaseQueryUrl` | `string?` *(new in 2026.8.1 — query URL backing the landing-page showcase carousel)* |
+| `enableSingleLogout` | `boolean` *(new in 2026.11.1 — sign-out also signs the user out of the IdP; read it with `selectEnableSingleLogout$()`)* |
 
 #### `SearchWithinJournal`
 
@@ -2320,6 +2361,12 @@ Field added in 2026.10.1:
 | `enable_embedded_research_assistant` | `boolean` | Enables the Research Assistant embedded in the results page |
 
 `ViewOrgLevel` also gained `'network-zone-id'?: number` in 2026.10.1, alongside the existing `'network-zone-code'`.
+
+Field added in 2026.11.1:
+
+| Field | Type | Notes |
+|---|---|---|
+| `rapido_offer_by_resource_type_enabled` | `boolean` | Enables Rapido offers scoped by the patron-selected resource type |
 
 #### `MappingTables`
 
@@ -2509,6 +2556,7 @@ Defined in `src/models/account.model.ts` (partial — see excluded types below).
 |---|---|
 | `loansCounter` | `number \| undefined` |
 | `requestsCounter` | `number \| undefined` |
+| `depositsCounter` | `number \| undefined` *(new in 2026.11.1)* |
 | `finesCounter` | `number \| undefined` |
 | `blocksCounter` | `number \| undefined` |
 | `favoritesCounter` | `number \| undefined` |
@@ -2600,8 +2648,33 @@ Extends `SavedSearchInterface` and `MapSearchParams` with `itemType` and `title`
 *New in 2026.5.1.*
 
 ```typescript
-type PageType = 'loans' | 'requests' | 'fines' | 'searchHistory' | 'savedSearches';
+type PageType = 'loans' | 'requests' | 'fines' | 'searchHistory' | 'savedSearches' | 'deposits';
 ```
+
+`'deposits'` is (new in 2026.11.1).
+
+#### `MappedDepositItem` *(new in 2026.11.1)*
+
+A research deposit as the host maps it for the "My Deposits" account section (`AccountState.depositsList`). Display state only.
+
+| Field | Type | Description |
+|---|---|---|
+| `itemType` | `'deposit'` | Discriminator |
+| `depositId` | `string` | Deposit ID |
+| `title` | `string` | Deposit title |
+| `firstLine` | `string` | First display line |
+| `statusLabel` | `string` | Translated status label |
+| `statusColor` | `'red' \| 'green' \| 'grey'` | Status chip colour |
+| `submittedDate` | `string` | Submission date |
+| `updatedDate` | `string` | Last update date |
+| `repId` | `string` | Representation ID |
+| `canDelete` | `boolean` | Whether the host UI offers delete (deleting is a host-owned ILS call) |
+| `fileName` | `string` | First file name |
+| `returnReason` | `string` | Reason given when a deposit was returned |
+
+#### `DepositItem` / `DepositsResponse` *(new in 2026.11.1)*
+
+The raw ILS deposits response: `DepositsResponse { status?, data?: DepositsData }`, `DepositsData { deposits?: { deposit?: DepositItem[] }, termsofuse? }`. Each `DepositItem` carries `depositid`, `title`, `isdraft`, `deliveryurl`, `depositstatus`, `status`, `updatedate`, `submissiondate`, `depositprofileid`, `file?: DepositFile[]` (`fileid`, `filename`, `label`) and `notes?: { note?: DepositNote[] }` (`updatedby`, `content`, `date`). All fields are optional.
 
 > **Excluded from this package:** `RequestOptions`, `NestedRequestOptions` (enable ILS mutation path), `PersonalDetailsInfo` (carries editable personal data). These must remain host-only.
 
@@ -2677,6 +2750,7 @@ import { searchAction, loadFiltersAction, setDecodedJwt } from '@libis/primo-sha
 | `changeSearchInFullTextToggleValue` | `[Filter Side Bar] Search In Full Text value changed` | `{ searchInFullTextToggleValue: boolean }` |
 | `setIsResourceRecommenderExpandedAction` *(new in 2026.4.1)* | `[search] Set Is Resource Recommender Expanded ` ¹² | `{ isResourceRecommenderExpanded: boolean }` |
 | `updateResearchModeSelectedAction` *(new in 2026.10.1)* | `[Search] Update ResearchMode tab selected` | `{ mode: boolean }` |
+| `toggleShowResearchAssistantSuggestionAction` *(new in 2026.11.1)* | `[Search] Update show Research Assistant Suggestion toggle` | `{ mode: boolean }` |
 
 ¹ Lowercase `[search]` in type string.
 ² Trailing space in type string — must match exactly.
@@ -2709,7 +2783,6 @@ import { searchAction, loadFiltersAction, setDecodedJwt } from '@libis/primo-sha
 |---|---|---|
 | `setDecodedJwt` | `[User] Set Decoded Jwt` | `{ decodedJwt: DecodedJwt }` |
 | `resetJwtAction` | `[User] reset jwt` | `{ logoutReason: LogoutReason; url?: string }` |
-| `loadUserSettingsSuccessAction` | `[User-Settings] save user settings` | `{ userSettings: UserSettings; isNewSession: boolean }` |
 | `doneChangeUserSettingsLanguageAction` | `[User-Settings] Done Change User Settings Language` | `{ value: string }` |
 | `doneSaveHistoryToggleAction` | `[User-Settings] Done Update Save history toggle ` ³ | `{ value: string }` |
 | `doneUseHistoryToggleAction` | `[User-Settings] Done Update Use history toggle ` ³ | `{ value: string }` |
@@ -2750,7 +2823,7 @@ This package uses `YYYY.M.regenerateCount` versioning (e.g. `2026.4.1`):
 # After regenerating, build and pack:
 npm run build
 npm pack
-# → libis-primo-shared-state-2026.10.2.tgz
+# → libis-primo-shared-state-2026.11.1.tgz
 ```
 
 ### Cutting a release

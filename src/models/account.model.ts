@@ -248,6 +248,7 @@ export interface BlockMessage {
 export interface accountViewModel {
   loansCounter: number | undefined;
   requestsCounter: number | undefined;
+  depositsCounter: number | undefined;
   finesCounter: number | undefined;
   blocksCounter: number | undefined;
   favoritesCounter: number | undefined;
@@ -350,7 +351,73 @@ export interface CounterListOfActions {
   action: CounterAction[];
 }
 
-export type PageType = 'loans' | 'requests' | 'fines' | 'searchHistory' | 'savedSearches';
+export type PageType = 'loans' | 'requests' | 'fines' | 'searchHistory' | 'savedSearches' | 'deposits';
+
+/**
+ * Deposits (Esploro / Alma research deposits) shown in the "My Deposits"
+ * account section (new in 2026.11.1). Raw API shape — the host maps each
+ * `DepositItem` into a {@link MappedDepositItem} before storing it.
+ */
+export interface DepositItem {
+  depositid?: string;
+  title?: string;
+  isdraft?: boolean;
+  deliveryurl?: string;
+  depositstatus?: string;
+  /** Normalised status code, e.g. "SUBMITTED" / "DRAFT". */
+  status?: string;
+  updatedate?: string;
+  submissiondate?: string;
+  depositprofileid?: string;
+  file?: DepositFile[];
+  notes?: {
+    note?: DepositNote[];
+  };
+}
+
+export interface DepositFile {
+  fileid?: string;
+  filename?: string;
+  label?: string;
+}
+
+export interface DepositNote {
+  updatedby?: string;
+  content?: string;
+  date?: string;
+}
+
+export interface DepositsData {
+  deposits?: {
+    deposit?: DepositItem[];
+  };
+  termsofuse?: string;
+}
+
+export interface DepositsResponse {
+  status?: string;
+  data?: DepositsData;
+}
+
+/**
+ * Deposit item as mapped by the host for display in the account deposits list
+ * (`AccountState.depositsList`). Display state only — `canDelete` reflects
+ * what the host UI offers; deleting a deposit is a host-owned ILS call.
+ */
+export interface MappedDepositItem {
+  itemType: 'deposit';
+  depositId: string;
+  title: string;
+  firstLine: string;
+  statusLabel: string;
+  statusColor: 'red' | 'green' | 'grey';
+  submittedDate: string;
+  updatedDate: string;
+  repId: string;
+  canDelete: boolean;
+  fileName: string;
+  returnReason: string;
+}
 
 export const ActionTypes = {
   SideMenuNavigation: 'Side Menu Navigation',

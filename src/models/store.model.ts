@@ -63,6 +63,7 @@ import {
 import {
   BlockMessage,
   LoanItem,
+  MappedDepositItem,
   MappedFineItem,
   MappedInstItem,
   MappedRequestItem,
@@ -113,6 +114,14 @@ export interface SearchState extends EntityState<Doc> {
    * `false` whenever a resource-type filter is selected.
    */
   researchMode: boolean;
+  /**
+   * Whether the host shows the inline "try the Research Assistant" suggestion
+   * on the results page (new in 2026.11.1). Defaults to `true`; the host
+   * re-arms it to `true` whenever `searchAction` runs with a different `q`
+   * than the previous search. Writable via
+   * `toggleShowResearchAssistantSuggestionAction` (e.g. to dismiss it).
+   */
+  showResearchAssistantSuggestion: boolean;
 }
 
 export interface ViewConfigState {
@@ -147,6 +156,7 @@ export interface AccountState {
   historicLoansCounter: number | undefined;
   isLoansBadgeIndication: boolean | undefined;
   requestsCounter: number | undefined;
+  depositsCounter: number | undefined;
   isRequestsBadgeIndication: boolean | undefined;
   finesCounter: number | undefined;
   isFinesBadgeIndication: boolean | undefined;
@@ -192,6 +202,16 @@ export interface AccountState {
   finesTotalNum: number | undefined;
   finesFilteredListCounter: number;
   finesStatus: LoadingStatus;
+  depositsList: MappedDepositItem[];
+  depositsOffset: number;
+  depositsBulk: number;
+  depositsListCounter: number;
+  /**
+   * Host writes upper-case literals here (`"PENDING"` → `"LOADING"` →
+   * `"SUCCESS"` / `"FAILURE"`), not the lower-case {@link LoadingStatus} constants, so the
+   * field is typed as the host declares it: `string`.
+   */
+  depositsStatus: string;
   personalDetails: unknown;
 }
 

@@ -29,6 +29,8 @@ export interface ViewConfigData {
   enableExtendSession:               boolean;
   enableExtendSessionToMax:          boolean;
   enableUserSettingForExtendSession: boolean;
+  /** When true, signing out of Primo also signs the user out of the institution's IdP (single logout). */
+  enableSingleLogout:                boolean;
   UIComponents:                      UIComponents;
   'tab-to-tiles':                    TabToTiles;
   queryTerms:                        QueryTerms;
@@ -478,6 +480,8 @@ export interface SystemConfiguration {
   hide_update_login_credentials_external_users: boolean;
   /** Enables the Research Assistant embedded in the search results page (as opposed to its standalone page). */
   enable_embedded_research_assistant: boolean;
+  /** Enables Rapido offers scoped by the patron-selected resource type. */
+  rapido_offer_by_resource_type_enabled: boolean;
 }
 
 export interface HideRapidoExpandLinkMap {

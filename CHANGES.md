@@ -1,5 +1,79 @@
 # Changelog
 
+## 2026.11.1 — 2026-10-19
+
+**November 2026 prerelease**, cut ahead of the release month from the November NDE extract (`main.86fdc700121a45a5` / `src_bootstrap_ts.4f4c6a07ec7dbda0`), as was done for 2026.10.1. It was indexed with `npm run index-state` (35 slices) and diffed file by file against the October extract (`src_bootstrap_ts.2ddf78233771ee99`).
+
+`StoreModule.forRoot` is unchanged: 31 feature reducers plus `router`, 32 `AppState` keys, and no slice added, renamed or removed. The only `app.module.ts` change is a new host-only `CaptchaInterceptor`. All 49 previously exported type strings still exist byte-for-byte. One action was removed after explicit user confirmation, and one was added, so the exported set stays at **49**.
+
+### Added
+
+- **`shared-actions.ts` — `toggleShowResearchAssistantSuggestionAction`** (`[Search] Update show Research Assistant Suggestion toggle`, `{ mode: boolean }`). It is reducer-only: no host effect listens to it. The host's own "dismiss" button dispatches it with `false`, and the `searchAction` reducer re-arms it to `true` when `q` changes.
+- **`shared-actions.ts` — `FilterGroupValue.filterType?: FilterType`.** The host's multi-select reducer and `applyMultiSelectFilters$` effect now accept excludes (`facet_<group>,exclude,<value>`) and drop the opposite-polarity entry for the same value. The prop is optional and defaults to include, so existing callers are unaffected.
+- **`store.model.ts`**:
+  - `SearchState.showResearchAssistantSuggestion: boolean`.
+  - `AccountState` gained `depositsCounter`, `depositsList: MappedDepositItem[]`, `depositsOffset`, `depositsBulk` and `depositsListCounter`, plus `depositsStatus`. `depositsStatus` is typed `string`, as the host declares it, because the host writes upper-case `"PENDING"` / `"LOADING"` / `"SUCCESS"` / `"FAILURE"` literals rather than `LoadingStatus` values.
+- **`account.model.ts`** — the new "My Deposits" section:
+  - `MappedDepositItem` (display state).
+  - `DepositItem`, `DepositFile`, `DepositNote`, `DepositsData` and `DepositsResponse` (the raw ILS response).
+  - `accountViewModel.depositsCounter`.
+  - `PageType` gains `'deposits'`.
+- **`search.model.ts`**:
+  - `ElectronicService` gained the Controlled Digital Lending session fields `ndeCdlMode`, `ndeCdlMessage`, `ndeCdlSessionActive`, `ndeCdlAvailableStatus`, `ndeCdlRemainingTime`, `triggerTimer`, `timerExpiresAt`, `showTimer` and `waitingListPosition`, all optional.
+  - New `CdlType` type plus the `SHORT_TERM` / `LONG_TERM` / `NO_CDL` constants, mirrored from the host's `cdl-dialog.component.ts`.
+- **`view-config.model.ts`** — `ViewConfigData.enableSingleLogout: boolean`; `SystemConfiguration.rapido_offer_by_resource_type_enabled: boolean`.
+- **`SearchStateService`**:
+  - `selectShowResearchAssistantSuggestion$()` / `showResearchAssistantSuggestionSignal()` / `isShowResearchAssistantSuggestion()`. These mirror the host's derived `selectShowResearchAssistantSuggestion`: the flag AND `displayRA` AND NOT `researchMode`.
+  - New dispatch helper `setShowResearchAssistantSuggestion(b)`.
+- **`AccountStateService`** (read-only) — six new selector groups, each with all three variants: `DepositsCounter`, `DepositsList`, `DepositsStatus`, `DepositsOffset`, `DepositsBulk` and `DepositsListCounter`. The Observable / Signal / Promise names follow the existing pattern, e.g. `selectDepositsList$()` / `depositsListSignal()` / `getDepositsList()`.
+- **`ViewConfigStateService`** — `selectEnableSingleLogout$()` / `enableSingleLogoutSignal()` / `isEnableSingleLogout()`, mirroring the host's new `selectEnableSingleLogout`.
+
+### Changed
+
+- **`resetJwtAction` host behaviour (JSDoc updated; no type change).** In the November host, `startResetUserSettingsAfterLogOut$` skips `resetUserSettingsAction` when `resetJwtSuccess` carries a `url`. As a result, `logout(reason, url)` no longer resets user settings or navigates to `/home` before the redirect. Without `url`, nothing changes.
+- **Host-side changes with no package impact, recorded for reference:**
+  - `selectQuickFilters` no longer substitutes hard-coded journal quick filters on journal search.
+  - Brief location items now read four `item.brief.N` mapping rows instead of three.
+  - The favourites label filter supports a `$$unlabeled$$` pseudo-label, and labels are sorted.
+  - `ngrs.model.ts` changed `PICKUP_MEMBER` and added resource-type fields. That model is not part of this package.
+- **Not mirrored, deliberately:**
+  - The host's new parameterised `selectIsFilterExcludedByFilterGroupAndValue`. `FilterStateService` exposes no parameterised selectors (its include counterpart was never mirrored either). Remotes can derive it from `excludedFilter` / `multiSelectedFilter`.
+  - `selectHasUnlabeledFavorites`. The `favorites` slice is still an opaque stub.
+
+### Changed — safety gate
+
+- **New exclusions documented** (each verified against the November extract):
+  - Deposits: `startGetAccountDepositsList` (HTTP); `doneGetAccountDepositsList` and `doneSortDepositsPage` (server-authoritative payloads); `sortDepositAction` and `startSortDepositsPage` (host sort chain); `updateDepositsStatus`, `updateDepositsOffset` and `resetDepositsList` (host-owned paging and status for an ILS-backed list, consistent with the other account sections).
+  - Every new `[CDL]` action. They either call CDL HTTP endpoints or write server-authoritative CDL session state into `Delivery` entities.
+  - `reloadFullDisplayState` and `setFullDisplayLoadedLanguage` (host-internal full-display reload orchestration).
+- Compared the effect listeners of every exported action between the October and November extracts. Only `loadUserSettingsSuccessAction` gained one (see below).
+
+### ⚠️ Breaking removals (confirmed by user before applying)
+
+- **`loadUserSettingsSuccessAction`** (`[User-Settings] save user settings`) is no longer exported. The November host's new full-display effect `reloadFullDisplayOnLoginOrLanguageChange$` listens to it. On a full-display or openurl route, it dispatches `reloadFullDisplayState` / `loadServicePageDataAction`, which clears the record's `Search`, `Delivery` and `full-display` state and re-fetches it over HTTP. That makes it a success action feeding an HTTP effect. (It already fed the preferred-language sync in `user.effects`, and was exported "with caveat".)
+  - **Affected code:** any remote that imports `loadUserSettingsSuccessAction`. No service method wraps it. The `UserSettings` model and every `UserStateService` settings selector are unchanged. To react when settings load, listen passively with `this.actions$.pipe(ofType('[User-Settings] save user settings'))`. Never dispatch it.
+
+### API symmetry
+
+- Audited all seven services. All **98 selector groups** (90 existing plus 8 new) expose the full Observable / Signal / Promise triple. No gaps needed backfilling.
+
+### Store model
+
+- `AppState` is unchanged at 32 keys. Seven slices are fully typed and 25 are opaque stubs. `Search` and `account` gained fields (see *Added*). No consumed-slice field was removed or renamed.
+
+### Documentation
+
+- **README.md**:
+  - Pack/install version strings bumped to `2026.11.1`.
+  - The `AccountStateService` tables gained the six deposits groups. `SearchStateService` gained the RA-suggestion rows and `setShowResearchAssistantSuggestion(b)`. `ViewConfigStateService` gained the single-logout rows.
+  - `loadUserSettingsSuccessAction` was removed from the *User actions* table, and the "Not all success actions are safe" note now explains the removal. `toggleShowResearchAssistantSuggestionAction` was added to the *Search UI actions* table and to the pure UI-state writes list.
+  - The `FilterGroupValue` table gained `filterType`, and the dispatch-helper snippet shows an exclude.
+  - Model sections: `accountViewModel.depositsCounter`; `PageType` `'deposits'`; new `MappedDepositItem` and `DepositItem` / `DepositsResponse` sections; the `ElectronicService` CDL fields and `CdlType`; `ViewConfigData.enableSingleLogout`; and a `SystemConfiguration` 2026.11.1 table.
+  - The `UserStateService` `logout()` note now describes the `url` behaviour change.
+- **EXAMPLES.md**:
+  - The custom-filters snippet imports `FilterType` and shows a multi-select exclude.
+  - New section *Research Assistant Suggestion and Account Deposits (new in 2026.11.1)*.
+
 ## 2026.10.2 — 2026-10-05
 
 **October 2026 production release.** It promotes the 2026.10.1 prerelease after the production host upgrade. The package was re-checked against a fresh extract of the upgraded host, taken on 2026-10-05 (`main.3b86c5b9b6835dff` / `src_bootstrap_ts.2ddf78233771ee99`).

@@ -231,7 +231,32 @@ export interface ElectronicService {
   researchLinksList?: EsploroResearchLink[];
   collapse?: boolean;
   shouldDisplayInDigitalViewer?: boolean;
+  /*
+   * Controlled Digital Lending (CDL) session fields (new in 2026.11.1).
+   * Written by the host's Delivery reducer when the patron starts, ends or
+   * waits for a CDL viewing session on this service. Read-only for remotes.
+   */
+  ndeCdlMode?: CdlType;
+  ndeCdlMessage?: string;
+  ndeCdlSessionActive?: boolean;
+  ndeCdlAvailableStatus?: string;
+  /** Remaining CDL loan time as returned by the server (seconds, as a string). */
+  ndeCdlRemainingTime?: string;
+  triggerTimer?: boolean;
+  /** Epoch milliseconds at which the active CDL session expires. */
+  timerExpiresAt?: number;
+  showTimer?: boolean;
+  waitingListPosition?: string;
 }
+
+/**
+ * Controlled Digital Lending (CDL) loan modes (new in 2026.11.1). Mirrors the
+ * host's `CdlType` from `cdl-dialog.component.ts`.
+ */
+export const SHORT_TERM: "SHORT_TERM" = 'SHORT_TERM';
+export const LONG_TERM: "LONG_TERM" = 'LONG_TERM';
+export const NO_CDL: "NO_CDL" = 'NO_CDL';
+export type CdlType = typeof SHORT_TERM | typeof LONG_TERM | typeof NO_CDL;
 
 export interface AdditionalElectronicService {
   OpenURL: ElectronicService[]
