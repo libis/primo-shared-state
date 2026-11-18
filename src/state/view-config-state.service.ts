@@ -16,6 +16,18 @@ import { AppState } from '../models/store.model';
 import { StateHelper } from '../utils/state-helper';
 
 /**
+ * Mirrors the host's `selectIsTagsMainMenuLinkEnabled`: `true` when the main-menu
+ * tile for the current vid (`tiles.MainMenuTileInterface['<vid>.MainMenuTileInterface']`)
+ * has an entry whose label is `tags` (case-insensitive).
+ */
+const isTagsMainMenuLinkEnabled = (state: AppState): boolean => {
+  const config = state.viewConfig?.config;
+  const vid = config?.vid;
+  const mainview = vid ? config?.tiles?.MainMenuTileInterface?.[vid + '.MainMenuTileInterface']?.mainview : undefined;
+  return !!mainview?.some(menuItem => menuItem.label?.toLowerCase() === 'tags');
+};
+
+/**
  * Read-only service for accessing the Primo view configuration state.
  * Configuration is set once at bootstrap by the host — remotes only read it.
  *
@@ -98,6 +110,15 @@ export class ViewConfigStateService {
     return this.helper.select$((state: AppState) => state.viewConfig?.config?.enableSingleLogout);
   }
 
+  /**
+   * Whether the view's main menu contains a "Tags" link. Mirrors the host's
+   * `selectIsTagsMainMenuLinkEnabled`. Since 2026.11.2 the host only shows full-display
+   * tags when this is `true` and the `enable_nde_tags` feature flag is on.
+   */
+  selectIsTagsMainMenuLinkEnabled$(): Observable<boolean> {
+    return this.helper.select$(isTagsMainMenuLinkEnabled);
+  }
+
   // ── Promise API (snapshots) ───────────────────────────────────────────────
 
   async getConfig(): Promise<ViewConfigData | undefined> {
@@ -160,6 +181,10 @@ export class ViewConfigStateService {
     return this.helper.selectOnce((state: AppState) => state.viewConfig?.config?.enableSingleLogout);
   }
 
+  async isTagsMainMenuLinkEnabled(): Promise<boolean> {
+    return this.helper.selectOnce(isTagsMainMenuLinkEnabled);
+  }
+
   // ── Signal API ────────────────────────────────────────────────────────────
 
   statusSignal(): Signal<LoadingStatus> {
@@ -220,5 +245,9 @@ export class ViewConfigStateService {
 
   enableSingleLogoutSignal(): Signal<boolean | undefined> {
     return this.helper.selectSignal((state: AppState) => state.viewConfig?.config?.enableSingleLogout, undefined);
+  }
+
+  isTagsMainMenuLinkEnabledSignal(): Signal<boolean> {
+    return this.helper.selectSignal(isTagsMainMenuLinkEnabled, false);
   }
 }

@@ -90,7 +90,7 @@ npm run build
 
 # 3. Create a distributable tarball
 npm pack
-# → libis-primo-shared-state-2026.11.1.tgz
+# → libis-primo-shared-state-2026.11.2.tgz
 ```
 
 ---
@@ -101,14 +101,14 @@ npm pack
 
 ```bash
 npm pack
-cp libis-primo-shared-state-2026.11.1.tgz path/to/NDE_customModule/nde/
+cp libis-primo-shared-state-2026.11.2.tgz path/to/NDE_customModule/nde/
 ```
 
 ### Step 2 — add the `file:` dependency to the remote's `package.json`
 
 ```json
 "dependencies": {
-  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.11.1.tgz"
+  "@libis/primo-shared-state": "file:nde/libis-primo-shared-state-2026.11.2.tgz"
 }
 ```
 
@@ -1047,6 +1047,7 @@ instance, so the per-service references below apply verbatim:
 | `selectVid$()` | `Observable<string \| undefined>` | View ID |
 | `selectInterfaceLanguage$()` | `Observable<string \| undefined>` | Interface language |
 | `selectEnableSingleLogout$()` *(new in 2026.11.1)* | `Observable<boolean \| undefined>` | Whether sign-out also signs the user out of the IdP (`ViewConfigData.enableSingleLogout`) |
+| `selectIsTagsMainMenuLinkEnabled$()` *(new in 2026.11.2)* | `Observable<boolean>` | Whether the current view's main menu has a "Tags" link (mirrors the host's `selectIsTagsMainMenuLinkEnabled`; the host gates full-display tags on it) |
 
 #### Signals
 | Method | Returns | Initial value |
@@ -1066,6 +1067,7 @@ instance, so the per-service references below apply verbatim:
 | `vidSignal()` | `Signal<string \| undefined>` | `undefined` |
 | `interfaceLanguageSignal()` | `Signal<string \| undefined>` | `undefined` |
 | `enableSingleLogoutSignal()` *(new in 2026.11.1)* | `Signal<boolean \| undefined>` | `undefined` |
+| `isTagsMainMenuLinkEnabledSignal()` *(new in 2026.11.2)* | `Signal<boolean>` | `false` |
 
 #### Snapshots
 | Method | Returns |
@@ -1085,6 +1087,7 @@ instance, so the per-service references below apply verbatim:
 | `getVid()` | `Promise<string \| undefined>` |
 | `getInterfaceLanguage()` | `Promise<string \| undefined>` |
 | `isEnableSingleLogout()` *(new in 2026.11.1)* | `Promise<boolean \| undefined>` |
+| `isTagsMainMenuLinkEnabled()` *(new in 2026.11.2)* | `Promise<boolean>` |
 
 ---
 
@@ -2823,7 +2826,7 @@ This package uses `YYYY.M.regenerateCount` versioning (e.g. `2026.4.1`):
 # After regenerating, build and pack:
 npm run build
 npm pack
-# → libis-primo-shared-state-2026.11.1.tgz
+# → libis-primo-shared-state-2026.11.2.tgz
 ```
 
 ### Cutting a release

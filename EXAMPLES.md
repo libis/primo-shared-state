@@ -611,6 +611,32 @@ export class ConfigAwareWidgetComponent implements OnInit {
 }
 ```
 
+### Matching the host's tags gate (new in 2026.11.2)
+
+Since 2026.11.2, the host shows full-display tags only when the `enable_nde_tags` feature flag is on **and** the view's main menu has a "Tags" link. A remote that adds tag-related UI can use the same gate:
+
+```typescript
+import { Component, computed } from '@angular/core';
+import { ViewConfigStateService } from '@libis/primo-shared-state';
+
+@Component({
+  selector: 'app-tags-hint',
+  template: `
+    @if (tagsAvailable()) {
+      <span class="tags-hint">Tags are enabled for this view</span>
+    }
+  `
+})
+export class TagsHintComponent {
+  private flags = this.viewConfig.featureFlagsSignal();
+  private tagsMenuLink = this.viewConfig.isTagsMainMenuLinkEnabledSignal();
+
+  tagsAvailable = computed(() => !!this.flags()?.['enable_nde_tags'] && this.tagsMenuLink());
+
+  constructor(private viewConfig: ViewConfigStateService) {}
+}
+```
+
 ## Displaying Entity / Linked Data
 
 Read-only access to linked-data entity state (person, organisation, location pages).

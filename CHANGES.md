@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026.11.2 — 2026-11-18
+
+**November 2026 production release.** It promotes the 2026.11.1 prerelease after the production host upgrade. The package was re-checked against a fresh extract of the upgraded host (`main.d6d3c6a2caa4266a` / `src_bootstrap_ts.26904088c4c344a3`). It was re-indexed with `npm run index-state` (35 slices) and diffed file by file against the prerelease's source extract (`src_bootstrap_ts.4f4c6a07ec7dbda0`).
+
+The bootstrap chunk changed in 19 files. The `main` chunk, every reducer, `app.module.ts` and every file under `app/models/` are byte-identical. `AppState` stays at 32 keys, and the exported action set stays at **49** with every type string unchanged.
+
+### Added
+
+- **`ViewConfigStateService`** — `selectIsTagsMainMenuLinkEnabled$()` / `isTagsMainMenuLinkEnabledSignal()` / `isTagsMainMenuLinkEnabled()` (all `boolean`, default `false`). They mirror the host's new `selectIsTagsMainMenuLinkEnabled`, which is true when the current vid's `MainMenuTileInterface` has a `mainview` entry labelled `tags` (case-insensitive). The host now shows full-display tags only when this is true **and** `enable_nde_tags` is on. The facade `primo.config` picks these methods up automatically.
+
+### Changed
+
+- **Host-side changes with no package impact, recorded for reference:**
+  - `startDatabaseSearchAction` and `startDatabaseCategoriesSearchAction` gained an optional `facet?: string[]` prop. Their effects forward it as `qInclude`, and the database deep-link effect now passes URL facets (such as `facet_frbrgroupid`) through. Neither action is exported: both start host HTTP search chains (and clear atoz / category state). No change to the exclusion.
+  - Full-display record fetches from a database-search context now fall back to the view's default scope instead of `jsearch_*`. Full-display URLs built by the host also keep the current full-display route variant.
+  - Record availability now treats every full-display route variant as full display, not only `fulldisplay`.
+  - Featured-results card clicks no longer mark the scope as changed, so the search bar no longer auto-submits a search.
+  - The `exl-captcha` listener moved from `AppLayoutComponent` to `AppComponent`.
+  - Request forms now pre-fill `owner` from the form defaults; request-type sorting skips empty items; the filter exclude button stops click propagation (a Firefox fix); the Alma D viewer passes `showXywh: true`.
+
+### API symmetry
+
+- Audited all seven services. All **99 selector groups** (98 existing plus 1 new) expose the full Observable / Signal / Promise triple. No gaps needed backfilling.
+
+### Store model
+
+- `AppState` is unchanged at 32 keys. Seven slices are fully typed and 25 are opaque stubs. No slice field was added, renamed or removed.
+
+### Documentation
+
+- **README.md**:
+  - Pack/install version strings bumped to `2026.11.2`.
+  - The `ViewConfigStateService` Observables / Signals / Snapshots tables gained the tags main-menu link rows.
+- **EXAMPLES.md** — new subsection *Matching the host's tags gate (new in 2026.11.2)* under *Reading View Configuration*.
+
 ## 2026.11.1 — 2026-10-19
 
 **November 2026 prerelease**, cut ahead of the release month from the November NDE extract (`main.86fdc700121a45a5` / `src_bootstrap_ts.4f4c6a07ec7dbda0`), as was done for 2026.10.1. It was indexed with `npm run index-state` (35 slices) and diffed file by file against the October extract (`src_bootstrap_ts.2ddf78233771ee99`).
